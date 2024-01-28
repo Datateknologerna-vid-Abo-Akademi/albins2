@@ -1,0 +1,30 @@
+version: '3'
+services: 
+  frontend:
+    restart: always
+    build: frontend/
+    expose:
+      - 3000
+  api:
+    restart: always
+    build: backend/
+    expose:
+      - 8000
+  db:
+    restart: always
+    image: postgres:16
+    volumes:
+      - albins_postgres_data:/var/lib/postgresql/data/:rw
+  redis: 
+    restart: always
+    image: redis
+  yxorp:
+    restart: always
+    image: traefik
+    ports:
+     - "80:80"
+     - "8080:8080"
+
+
+volumes:
+  albins_postgres_data:
