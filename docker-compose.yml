@@ -4,26 +4,49 @@ services:
     restart: always
     build: frontend/
     expose:
-      - 3000
+      - 80
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
   api:
     restart: always
     build: backend/
+    depends_on:
+      - db
+    command: /bin/bash -c "./scripts/wait-for-postgres.sh db:5432 && python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
     expose:
       - 8000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=PathPrefix(`/api`)"
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
   db:
     restart: always
-    image: postgres:16
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: albins
+      POSTGRES_PASSWORD: albins
+      POSTGRES_DB: albins
+    ports:
+      - "5432:5432"
     volumes:
       - albins_postgres_data:/var/lib/postgresql/data/:rw
   redis: 
     restart: always
-    image: redis
+    image: redis:7-alpine
   yxorp:
     restart: always
     image: traefik
+    command: 
+      - "--api.insecure=true"
+      - "--providers.docker"
+      - "--providers.docker.exposedbydefault=false"
+
     ports:
      - "80:80"
      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
 
 volumes:
