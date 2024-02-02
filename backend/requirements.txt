@@ -1,0 +1,11 @@
+django==5
+django-rest-framework
+psycopg2-binary
+django-ckeditor
+django-admin-ordering==0.16.1
+channels
+channels_redis
+six
+django_cleanup
+django-rest-knox
+django-storages
