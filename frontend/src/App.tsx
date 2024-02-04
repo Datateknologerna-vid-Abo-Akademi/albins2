@@ -1,18 +1,14 @@
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Start from './pages/Start.tsx';
 import Main from './pages/Main.tsx';
 import './App.css';
+import {useState} from "react";
 
 const App = () => {
+    const [showMain, setShowMain] = useState(false);
     return (
-        <Router>
-            <div className="App">
-                <Routes>
-                    <Route path="/" element={<Start />} />
-                    <Route path="/songs" element={<Main />} />
-                </Routes>
-            </div>
-        </Router>
+        <>
+            {!showMain ? <Start onButtonClick={() => setShowMain(true)} /> : <Main onBackClick={() => setShowMain(false)} />}
+        </>
     );
 }
 
