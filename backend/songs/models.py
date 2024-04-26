@@ -13,13 +13,18 @@ class SongBook(models.Model):
 
 class Category(models.Model):
     name = models.CharField("Name")
-    order = models.IntegerField("order", unique=True)
+    order = models.IntegerField("order", null=True, blank=True)
     songbook = models.ForeignKey(SongBook, on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = "Category"
         verbose_name_plural = "Categories"
         ordering = ["id"]
+
+    def save(self, *args, **kwargs):
+        if self.order is None:
+            self.order = (self.songbook.category_set.count() + 1)*10
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return self.name
@@ -32,7 +37,7 @@ class Song(models.Model):
     content = CKEditor5Field("Content", blank=True, null=True)
     audio = models.FileField("Audio", blank=True, null=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    order = models.IntegerField("#", blank=True)
+    order = models.IntegerField("#", blank=True, null=True)
 
     class Meta:
         verbose_name = "Song"

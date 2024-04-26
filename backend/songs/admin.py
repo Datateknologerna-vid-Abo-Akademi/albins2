@@ -33,11 +33,18 @@ class CategoryFormInline(OrderableAdmin, admin.TabularInline):
 @admin.register(Song)
 class SongAdmin(admin.ModelAdmin):
     exclude = ["order"]
+    list_display = ["title", "category"]
+    list_filter = ["category"]
+    search_fields = ["title", "melody", "author", "content"]
 
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     inlines = [SongFormInline]
+    exclude = ["order"]
+    list_display = ["name", "songbook"]
+    list_filter = ["songbook"]
+    search_fields = ["name"]
 
 
 @admin.register(SongBook)

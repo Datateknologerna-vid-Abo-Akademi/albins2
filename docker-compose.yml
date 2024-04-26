@@ -16,9 +16,11 @@ services:
     command: /bin/bash -c "./scripts/wait-for-postgres.sh db:5432 && python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
     expose:
       - 8000
+    volumes:
+      - ./albins-data.json:/code/albins-data.json:ro
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.api.rule=PathPrefix(`/api`) || PathPrefix(`/ckeditor5`)"
       - "traefik.http.services.api.loadbalancer.server.port=8000"
   db:
     restart: always

@@ -24,4 +24,5 @@ urlpatterns = [
     re_path(r'^api/admin/', admin.site.urls),
     re_path(r'^api/auth/', include('auth.urls')),
     re_path(r'^api/songs/', include('songs.urls')),
+    re_path("ckeditor5/", include('django_ckeditor_5.urls'), name="ck_editor_5_upload_file"),
 ]
