@@ -1,0 +1,63 @@
+:root {
+    --anmation-radius: min(33vw, 20vh);
+    --note-size: min(5vw, 3vh);
+}
+
+.start-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+.albin {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: min(50vw, 30vh);
+    margin-bottom: 5vh;
+}
+
+.albin object {
+    width: 100%;
+}
+
+.albin img {
+    position: absolute;
+    top: 30%;
+    left: 45%;
+    width: var(--note-size);
+    animation: swirl 5s infinite linear;
+    transform-origin: 50% 50%;
+}
+
+.start-container button {
+    margin-top: 15vh;
+    padding: 10px 20px;
+    min-width: 10vw;
+    width: min(50vw, 30vh);
+    font-size: min(7vw, 3.5vh);
+    border: none;
+    border-radius: 5px;
+    background-color: #bffff5;
+    cursor: pointer;
+    font-family: 'Roboto', sans-serif;
+    transition: transform 0.3s ease;
+}
+
+.start-container button:hover {
+    transform: scale(1.1);
+
+}
+
+@keyframes swirl {
+    0% {
+        transform: rotate(0deg) translate(var(--anmation-radius)) rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg) translate(var(--anmation-radius)) rotate(-360deg);
+    }
+}
+
