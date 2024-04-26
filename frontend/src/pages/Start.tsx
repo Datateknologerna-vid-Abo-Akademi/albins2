@@ -18,8 +18,9 @@ const Start = () => {
       );
       const data = await response.json();
       setToken(data.token);
-      window.localStorage.setItem('token', data.token);
-      window.location.href = '/categories';
+      const auth: {token: string, expiry: string} = {token: data.token, expiry: data.expiry};
+      window.localStorage.setItem('auth', JSON.stringify(auth));
+      window.location.reload();
     } catch (error) { console.error(error); }
   }
 

@@ -1,13 +1,23 @@
 import { useEffect, useState } from "react";
 import SearchBar from "../components/SearchBar";
-import { Song, SongBook, SongCategory } from './types';
+import { Song, SongBook } from './types';
 
 const Main = ({ onBackClick }: { onBackClick: () => void }) => {
     const [songs, setSongs] = useState<SongBook>({});
     const [searchResults, setSearchResults] = useState<Song[]>([]);
 
     useEffect(() => {
-        fetch("http://localhost:8000/api/songs/all")
+        const auth = JSON.parse(window.localStorage.getItem("auth") ?? "{}");
+
+        fetch("/api/songs/all"
+            , {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "token " + auth.token,
+                },
+            }
+        )
             .then((response) => {
                 if (!response.ok) {
                     throw new Error("Network response was not ok");
@@ -22,18 +32,22 @@ const Main = ({ onBackClick }: { onBackClick: () => void }) => {
             });
     }, []);
 
-    const searchSongs = (songs: SongBook, query: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const searchSongs = (data: any, query: string) => {
         const results: Song[] = [];
-        Object.values(songs).forEach((songBook: SongCategory) => {
-            Object.values(songBook).forEach((category: Song) => {
-                if (
-                    category.title.toLowerCase().includes(query.toLowerCase()) ||
-                    category.content.toLowerCase().includes(query.toLowerCase())
-                ) {
-                    results.push(category);
+        for (const songbook in data) {
+            for (const category in data[songbook]) {
+                for (const song in data[songbook][category]) {
+                    if (data[songbook][category][song].content && data[songbook][category][song].content.toLowerCase().includes(query.toLowerCase())) {
+                        results.push(data[songbook][category][song]);
+                    }
+                    if (song.toLowerCase().includes(query.toLowerCase())) {
+                        results.push(data[songbook][category][song]);
+                    }
                 }
-            });
-        });
+            }
+        }
+        console.log(results);
         return results;
     };
 
@@ -67,10 +81,7 @@ const Main = ({ onBackClick }: { onBackClick: () => void }) => {
             <SearchBar onSearch={handleSearch} />
             <div>
                 {searchResults.map((song, index) => (
-                    <div key={index}>
-                        <h3>{song.title}</h3>
-                        <p>{song.content}</p>
-                        {/* Render more song details here */}
+                    <div key={index} dangerouslySetInnerHTML={{__html: song.content}}>
                     </div>
                 ))}
             </div>

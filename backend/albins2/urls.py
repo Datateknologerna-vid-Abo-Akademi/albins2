@@ -17,9 +17,6 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, re_path
 
-from knox import views as knox_views
-from django.views.decorators.csrf import csrf_exempt
-
 urlpatterns = [
     re_path(r'^api/admin/', admin.site.urls),
     re_path(r'^api/auth/', include('auth.urls')),
