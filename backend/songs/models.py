@@ -1,6 +1,6 @@
 from django.db import models
 
-from ckeditor.fields import RichTextField
+from django_ckeditor_5.fields import CKEditor5Field
 # Create your models here.
 
 
@@ -29,7 +29,7 @@ class Song(models.Model):
     title = models.CharField("Title", max_length=100)
     melody = models.CharField("Melody", max_length=255, blank=True, null=True)
     author = models.CharField("Author", max_length=255, blank=True, null=True)
-    content = RichTextField("Content", blank=True, null=True)
+    content = CKEditor5Field("Content", blank=True, null=True)
     audio = models.FileField("Audio", blank=True, null=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     order = models.IntegerField("#", blank=True)

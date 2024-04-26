@@ -7,7 +7,7 @@ const App = () => {
     const [showMain, setShowMain] = useState(false);
     return (
         <>
-            {!showMain ? <Start onButtonClick={() => setShowMain(true)} /> : <Main onBackClick={() => setShowMain(false)} />}
+            {!showMain ? <Start/> : <Main onBackClick={() => setShowMain(false)} />}
         </>
     );
 }

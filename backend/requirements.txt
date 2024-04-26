@@ -1,7 +1,7 @@
 django==5
 django-rest-framework
 psycopg2-binary
-django-ckeditor
+django-ckeditor-5
 django-admin-ordering==0.16.1
 channels
 channels_redis
