@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import SearchBar from "../components/SearchBar";
 import { Song, SongBook } from './types';
+import Footer from "../components/Footer";
 
 const Main = ({ onBackClick }: { onBackClick: () => void }) => {
     const [songs, setSongs] = useState<SongBook>({});
@@ -86,6 +87,7 @@ const Main = ({ onBackClick }: { onBackClick: () => void }) => {
                 ))}
             </div>
             <h1 style={{ marginTop: "10vh" }}>Search bar and songs go here</h1>
+            <Footer/>
         </div>
     );
 };

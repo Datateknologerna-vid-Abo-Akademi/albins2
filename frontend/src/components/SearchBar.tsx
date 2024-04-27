@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { OnSearchType } from "../pages/types";
+import "../styles/Footer.css";
 
 interface SearchBarProps {
     onSearch: OnSearchType;
