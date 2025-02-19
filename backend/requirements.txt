@@ -7,5 +7,7 @@ channels
 channels_redis
 six
 django_cleanup
-django-rest-knox
+django-rest-knox~=5.0.2
 django-storages
+gunicorn
+djangorestframework~=3.15.2

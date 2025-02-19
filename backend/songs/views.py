@@ -6,7 +6,8 @@ from knox.auth import TokenAuthentication
 from .models import Song, SongBook, Category
 from .serializers import CategorySerializer, SongSerializer
 
-# Create your views here.
+from django.db.models import Prefetch
+
 
 class AllSongs(APIView):
     authentication_classes = [TokenAuthentication]
@@ -14,16 +15,25 @@ class AllSongs(APIView):
 
     def get(self, request, format=None):
         res = {}
-        
-        songbooks = SongBook.objects.all()
+
+        songbooks = SongBook.objects.prefetch_related(
+            Prefetch("category_set", queryset=Category.objects.prefetch_related("song_set"))
+        )
 
         for songbook in songbooks:
-            categories = Category.objects.filter(songbook=songbook)
             res[songbook.name] = {}
-            for category in categories:
+            for category in songbook.category_set.all():
                 res[songbook.name][category.name] = CategorySerializer(category).data
-                for song in Song.objects.filter(category=category):
-                    res[songbook.name][category.name][song.title] = SongSerializer(song).data
-
+                res[songbook.name][category.name]["songs"] = SongSerializer(category.song_set.all(), many=True).data
 
         return Response(res)
+
+
+class AllCategories(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        categories = Category.objects.all()
+        serializer = CategorySerializer(categories, many=True)
+        return Response(serializer.data)

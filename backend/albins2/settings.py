@@ -21,13 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-=8&t88n$e(7ewn*#l511qw7mh_amcg@$+f7algkzu9$7#bsz#('
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-secret-key-for-dev-only")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost").split(",")
 
 # Application definition
 
@@ -86,11 +85,11 @@ WSGI_APPLICATION = 'albins2.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'albins',
-        'USER': 'albins',
-        'PASSWORD': "albins",
-        'HOST': 'db',
-        'PORT': 5432,
+        'NAME': os.getenv("POSTGRES_DB", "albins"),
+        'USER': os.getenv("POSTGRES_USER", "albins"),
+        'PASSWORD': os.getenv("POSTGRES_PASSWORD", "albins"),
+        'HOST': os.getenv("POSTGRES_HOST", "db"),
+        'PORT': os.getenv("POSTGRES_PORT", 5432),
     }
 }
 
@@ -140,6 +139,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ('knox.auth.TokenAuthentication',),
+    'DEFAULT_THROTTLE_CLASSES': [
+        'auth.throttling.TokenRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'token': '100/hour',  # Limit requests per token
+    },
 }
 
 
@@ -231,3 +236,4 @@ CKEDITOR_5_CONFIGS = {
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 MEDIA_URL = '/api/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+TOKEN_EXPIRY = 7200

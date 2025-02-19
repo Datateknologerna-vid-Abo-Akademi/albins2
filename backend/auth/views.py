@@ -1,8 +1,8 @@
-from django.shortcuts import render
+from django.contrib.auth import login
 from knox.views import LoginView as KnoxLoginView
 from rest_framework import permissions
 from rest_framework.authtoken.serializers import AuthTokenSerializer
-from django.contrib.auth import login
+from albins2 import settings
 
 
 # Create your views here.
@@ -14,4 +14,8 @@ class LoginView(KnoxLoginView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         login(request, user)
-        return super().post(request, format=None)
+
+        # Generate Knox token
+        response = super().post(request, format=None)
+        response.data["expiry"] = settings.TOKEN_EXPIRY
+        return response

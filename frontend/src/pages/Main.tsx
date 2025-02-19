@@ -1,93 +1,59 @@
 import { useEffect, useState } from "react";
-import SearchBar from "../components/SearchBar";
-import { Song, SongBook } from './types';
+import { useSearchParams } from "react-router-dom";
 import Footer from "../components/Footer";
 
-const Main = ({ onBackClick }: { onBackClick: () => void }) => {
-    const [songs, setSongs] = useState<SongBook>({});
-    const [searchResults, setSearchResults] = useState<Song[]>([]);
+const Main = () => {
+    const [songs, setSongs] = useState<{ title: string; content: string }[]>([]);
+    const [searchParams] = useSearchParams();
+    const category = searchParams.get("category");
 
     useEffect(() => {
+        if (!category) return;
+
         const auth = JSON.parse(window.localStorage.getItem("auth") ?? "{}");
 
-        fetch("/api/songs/all"
-            , {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "token " + auth.token,
-                },
-            }
-        )
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error("Network response was not ok");
-                }
-                return response.json();
-            })
+        if (!auth || !auth.token) {
+            console.error("No authentication token found");
+            return;
+        }
+
+        fetch("/api/songs/all", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Token " + auth.token,
+            },
+        })
+            .then((response) => response.json())
             .then((data) => {
-                setSongs(data);
+                const songsInCategory = [];
+                for (const songbook in data) {
+                    if (data[songbook][category]) {
+                        for (const songTitle in data[songbook][category]) {
+                            songsInCategory.push({
+                                title: songTitle,
+                                content: data[songbook][category][songTitle].content,
+                            });
+                        }
+                    }
+                }
+                setSongs(songsInCategory);
             })
             .catch((error) => {
-                console.error(error.message);
+                console.error("Fetching songs failed:", error.message);
             });
-    }, []);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const searchSongs = (data: any, query: string) => {
-        const results: Song[] = [];
-        for (const songbook in data) {
-            for (const category in data[songbook]) {
-                for (const song in data[songbook][category]) {
-                    if (data[songbook][category][song].content && data[songbook][category][song].content.toLowerCase().includes(query.toLowerCase())) {
-                        results.push(data[songbook][category][song]);
-                    }
-                    if (song.toLowerCase().includes(query.toLowerCase())) {
-                        results.push(data[songbook][category][song]);
-                    }
-                }
-            }
-        }
-        console.log(results);
-        return results;
-    };
-
-    const handleSearch = (query: string) => {
-        if (!query) {
-            setSearchResults([]);
-        } else {
-            const results = searchSongs(songs, query);
-            setSearchResults(results);
-        }
-    };
+    }, [category]);
 
     return (
-        <div>
-            <button
-                className={"back"}
-                onClick={onBackClick}
-                style={{
-                    position: "absolute",
-                    top: "0",
-                    left: "0",
-                    fontSize: "3rem",
-                    color: "white",
-                    cursor: "pointer",
-                    background: "transparent",
-                    border: "none",
-                }}
-            >
-                <i className="las la-arrow-circle-left"></i>
-            </button>
-            <SearchBar onSearch={handleSearch} />
-            <div>
-                {searchResults.map((song, index) => (
-                    <div key={index} dangerouslySetInnerHTML={{__html: song.content}}>
-                    </div>
-                ))}
-            </div>
-            <h1 style={{ marginTop: "10vh" }}>Search bar and songs go here</h1>
-            <Footer/>
+        <div className="songs-container">
+            <h1>{category}</h1>
+            {songs.map((song, index) => (
+                <div key={index} className="song-card">
+                    <h2>{song.title}</h2>
+                    <div dangerouslySetInnerHTML={{ __html: song.content }} />
+                </div>
+            ))}
+            <Footer />
         </div>
     );
 };

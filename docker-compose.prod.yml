@@ -1,0 +1,74 @@
+services:
+  frontend:
+    build: ./frontend
+    restart: always
+    expose:
+      - "80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`yourdomain.com`)"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    networks:
+      - albins-net
+
+  api:
+    build: ./backend
+    image: albins2_api:latest
+    restart: always
+    depends_on:
+      - db
+    command: >
+      /bin/bash -c "./scripts/wait-for-postgres.sh db:5432 &&
+                    python manage.py migrate --noinput &&
+                    python manage.py runserver 0.0.0.0:8000"
+    expose:
+      - "8000"
+    volumes:
+      - ./albins-data.json:/code/albins-data.json:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`yourdomain.com`) && (PathPrefix(`/api`) || PathPrefix(`/ckeditor5`))"
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
+    networks:
+      - albins-net
+
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: albins
+      POSTGRES_PASSWORD: albins
+      POSTGRES_DB: albins
+    ports:
+      - "5432:5432"
+    volumes:
+      - albins_postgres_data:/var/lib/postgresql/data/
+    networks:
+      - albins-net
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - albins-net
+
+  traefik:
+    image: traefik:latest
+    restart: always
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - albins-net
+
+volumes:
+  albins_postgres_data:
+
+networks:
+  albins-net:
+    driver: bridge

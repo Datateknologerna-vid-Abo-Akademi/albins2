@@ -18,8 +18,8 @@ from django.contrib import admin
 from django.urls import include, re_path
 
 urlpatterns = [
-    re_path(r'^api/admin/', admin.site.urls),
-    re_path(r'^api/auth/', include('auth.urls')),
-    re_path(r'^api/songs/', include('songs.urls')),
+    re_path(r'api/admin/', admin.site.urls),
+    re_path(r'auth/', include('auth.urls')),
+    re_path(r'songs/', include('songs.urls')),
     re_path("ckeditor5/", include('django_ckeditor_5.urls'), name="ck_editor_5_upload_file"),
 ]

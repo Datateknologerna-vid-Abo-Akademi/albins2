@@ -5,10 +5,9 @@ from .models import Song, Category
 class SongSerializer(serializers.ModelSerializer):
     class Meta:
         model = Song
-        exclude = ['category', 'id', 'title']
-
+        fields = "__all__"
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        exclude = ['songbook', 'id', 'name']
+        fields = "__all__"
