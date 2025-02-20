@@ -1,10 +1,8 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Start.css";
 import Albin from "../components/Albin.tsx";
 
 const Start = () => {
-  const [token, setToken] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleClick = async () => {
@@ -22,7 +20,6 @@ const Start = () => {
       }
 
       const data = await response.json();
-      setToken(data.token);
       const auth = { token: data.token, expiry: new Date(Date.now() + 3600 * 1000).toISOString() };
       window.localStorage.setItem('auth', JSON.stringify(auth));
 

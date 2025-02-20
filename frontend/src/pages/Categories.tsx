@@ -7,55 +7,45 @@ const Categories = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const auth = JSON.parse(window.localStorage.getItem("auth") ?? "{}");
+        const auth = JSON.parse(localStorage.getItem("auth") ?? "{}");
 
-        if (!auth || !auth.token) {
+        if (!auth?.token) {
             console.error("No authentication token found");
             navigate("/");
             return;
         }
 
-        fetch("/api/songs/all", {
+        fetch("/api/categories/", {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Token " + auth.token,
+                "Authorization": `Token ${auth.token}`,
             },
         })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error("Unauthorized request or network issue");
-                }
-                return response.json();
-            })
+            .then((response) => response.ok ? response.json() : Promise.reject("Unauthorized request"))
             .then((data) => {
-                // Extract categories
-                const categoriesList = new Set<string>();
-                for (const songbook in data) {
-                    for (const category in data[songbook]) {
-                        categoriesList.add(category);
-                    }
-                }
-                setCategories(Array.from(categoriesList));
+                setCategories(data.map((category: { name: string }) => category.name));
             })
-            .catch((error) => {
-                console.error("Fetching categories failed:", error.message);
-            });
+            .catch((error) => console.error("Fetching categories failed:", error));
     }, [navigate]);
 
     return (
         <div className="categories-container">
             <h1>Categories</h1>
             <div className="categories-grid">
-                {categories.map((category, index) => (
-                    <button
-                        key={index}
-                        className="category-button"
-                        onClick={() => navigate(`/songs?category=${encodeURIComponent(category)}`)}
-                    >
-                        {category}
-                    </button>
-                ))}
+                {categories.length > 0 ? (
+                    categories.map((category, index) => (
+                        <button
+                            key={index}
+                            className="category-button"
+                            onClick={() => navigate(`/songs?category=${encodeURIComponent(category)}`)}
+                        >
+                            {category}
+                        </button>
+                    ))
+                ) : (
+                    <p>No categories found.</p>
+                )}
             </div>
             <Footer />
         </div>

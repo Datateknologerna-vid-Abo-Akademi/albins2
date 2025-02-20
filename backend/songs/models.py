@@ -1,51 +1,50 @@
 from django.db import models
-
 from django_ckeditor_5.fields import CKEditor5Field
 
 class SongBook(models.Model):
-    name = models.CharField("Name")
+    name = models.CharField(max_length=255, verbose_name="Name", unique=True)
 
-    def __str__(self) -> str:
+    def __str__(self):
         return self.name
 
 
 class Category(models.Model):
-    name = models.CharField("Name")
-    order = models.IntegerField("order", null=True, blank=True)
-    songbook = models.ForeignKey(SongBook, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255, verbose_name="Name", unique=True)
+    order = models.PositiveIntegerField(blank=True, null=True)
+    songbook = models.ForeignKey(SongBook, on_delete=models.CASCADE, related_name="categories")
 
     class Meta:
         verbose_name = "Category"
         verbose_name_plural = "Categories"
-        ordering = ["id"]
+        ordering = ["order", "id"]
 
     def save(self, *args, **kwargs):
         if self.order is None:
-            self.order = (self.songbook.category_set.count() + 1)*10
+            self.order = (self.songbook.categories.count() + 1) * 10
         super().save(*args, **kwargs)
 
-    def __str__(self) -> str:
-        return self.name
+    def __str__(self):
+        return f"{self.name} ({self.songbook.name})"
 
 
 class Song(models.Model):
-    title = models.CharField("Title", max_length=100)
-    melody = models.CharField("Melody", max_length=255, blank=True, null=True)
-    author = models.CharField("Author", max_length=255, blank=True, null=True)
-    content = CKEditor5Field("Content", blank=True, null=True)
-    audio = models.FileField("Audio", blank=True, null=True)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    order = models.IntegerField("#", blank=True, null=True)
+    title = models.CharField(max_length=255, verbose_name="Title")
+    melody = models.CharField(max_length=255, blank=True, null=True, verbose_name="Melody")
+    author = models.CharField(max_length=255, blank=True, null=True, verbose_name="Author")
+    content = CKEditor5Field(blank=True, null=True, verbose_name="Content")
+    audio = models.FileField(upload_to="songs/audio/", blank=True, null=True, verbose_name="Audio")
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="songs")
+    order = models.PositiveIntegerField(blank=True, null=True)
 
     class Meta:
         verbose_name = "Song"
         verbose_name_plural = "Songs"
-        ordering = ["id"]
+        ordering = ["order", "id"]
 
-    def __str__(self) -> str:
-        return self.title
-    
     def save(self, *args, **kwargs):
         if self.order is None:
-            self.order = (self.category.song_set.count() + 1)*10
+            self.order = (self.category.songs.count() + 1) * 10
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.title} ({self.category.name})"

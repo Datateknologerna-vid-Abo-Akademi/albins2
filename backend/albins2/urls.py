@@ -15,11 +15,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import include, re_path
+from django.urls import include, path
 
 urlpatterns = [
-    re_path(r'api/admin/', admin.site.urls),
-    re_path(r'auth/', include('auth.urls')),
-    re_path(r'songs/', include('songs.urls')),
-    re_path("ckeditor5/", include('django_ckeditor_5.urls'), name="ck_editor_5_upload_file"),
+    path("api/admin/", admin.site.urls),
+    path("api/auth/", include("auth.urls")),
+    path("api/", include("api.urls")),
+    path("ckeditor5/", include("django_ckeditor_5.urls"), name="ck_editor_5_upload_file"),
 ]

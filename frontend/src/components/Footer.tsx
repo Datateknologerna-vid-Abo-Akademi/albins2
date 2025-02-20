@@ -1,19 +1,14 @@
+import { useNavigate } from "react-router-dom";
+
 const Footer = () => {
-
-    const handleLeftButton = () => {
-        console.log("Left button clicked");
-    }
-
-    const HandleRightButton = () => {
-        console.log("Right button clicked");
-    }
+    const navigate = useNavigate();
 
     return (
         <div className="footer">
-          <button className="footer-nav" onClick={handleLeftButton}>Home</button>
-          <button className="footer-nav" onClick={HandleRightButton}>Search</button>
+            <button className="footer-nav" onClick={() => navigate("/categories")}>Categories</button>
+            <button className="footer-nav" onClick={() => navigate("/search")}>Search</button>
         </div>
     );
-}
+};
 
 export default Footer;

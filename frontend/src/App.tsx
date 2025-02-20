@@ -1,25 +1,18 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Start from './pages/Start.tsx';
 import Categories from './pages/Categories.tsx';
-import Main from './pages/Main.tsx';
+import Songs from './pages/Songs.tsx';
+import Search from './pages/Search.tsx';
 import './App.css';
-import { useEffect, useState } from "react";
+import {useEffect} from "react";
+import Song from "./pages/Song.tsx";
 
 const App = () => {
-    const [showMain, setShowMain] = useState(false);
-
     useEffect(() => {
-        const auth = JSON.parse(window.localStorage.getItem("auth") ?? "{}");
+        const auth = JSON.parse(localStorage.getItem("auth") ?? "{}");
 
-        if (!auth || !auth.token || !auth.expiry) {
+        if (!auth?.token || !auth?.expiry || new Date(auth.expiry) < new Date()) {
             console.log("No valid authentication found");
-            setShowMain(false);
-        } else if (new Date(auth.expiry) < new Date()) {
-            console.log("Token expired");
-            window.localStorage.removeItem("auth");
-            setShowMain(false);
-        } else {
-            setShowMain(true);
         }
     }, []);
 
@@ -28,7 +21,9 @@ const App = () => {
             <Routes>
                 <Route path="/" element={<Start />} />
                 <Route path="/categories" element={<Categories />} />
-                <Route path="/songs" element={<Main />} />
+                <Route path="/songs" element={<Songs />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/song/:id" element={<Song />} />
                 <Route path="*" element={<Navigate to="/" />} />
             </Routes>
         </Router>
