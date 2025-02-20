@@ -7,7 +7,6 @@ class SongBook(models.Model):
     def __str__(self):
         return self.name
 
-
 class Category(models.Model):
     name = models.CharField(max_length=255, verbose_name="Name", unique=True)
     order = models.PositiveIntegerField(blank=True, null=True)
@@ -20,12 +19,12 @@ class Category(models.Model):
 
     def save(self, *args, **kwargs):
         if self.order is None:
-            self.order = (self.songbook.categories.count() + 1) * 10
+            last_order = Category.objects.filter(songbook=self.songbook).order_by("-order").first()
+            self.order = (last_order.order + 10) if last_order else 10
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name} ({self.songbook.name})"
-
 
 class Song(models.Model):
     title = models.CharField(max_length=255, verbose_name="Title")
@@ -43,7 +42,8 @@ class Song(models.Model):
 
     def save(self, *args, **kwargs):
         if self.order is None:
-            self.order = (self.category.songs.count() + 1) * 10
+            last_order = Song.objects.filter(category=self.category).order_by("-order").first()
+            self.order = (last_order.order + 10) if last_order else 10
         super().save(*args, **kwargs)
 
     def __str__(self):

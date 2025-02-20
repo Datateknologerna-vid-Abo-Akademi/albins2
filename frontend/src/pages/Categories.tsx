@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
+import CategoryCard from "../components/CategoryCard";
+import "../styles/Categories.css";
+import "../styles/Footer.css";
 
 const Categories = () => {
     const [categories, setCategories] = useState<string[]>([]);
@@ -35,13 +38,7 @@ const Categories = () => {
             <div className="categories-grid">
                 {categories.length > 0 ? (
                     categories.map((category, index) => (
-                        <button
-                            key={index}
-                            className="category-button"
-                            onClick={() => navigate(`/songs?category=${encodeURIComponent(category)}`)}
-                        >
-                            {category}
-                        </button>
+                        <CategoryCard key={index} category={category} />
                     ))
                 ) : (
                     <p>No categories found.</p>

@@ -42,9 +42,7 @@ INSTALLED_APPS = [
     'admin_ordering',
     'storages',
     'rest_framework',
-
-    'songs',
-
+    'api',
     'django_cleanup',  # Should be places last
 ]
 
@@ -143,7 +141,7 @@ REST_FRAMEWORK = {
         'auth.throttling.TokenRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'token': '100/hour',  # Limit requests per token
+        'token': '600/hour',  # Limit requests per token
     },
 }
 

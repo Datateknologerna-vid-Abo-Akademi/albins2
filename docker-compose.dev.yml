@@ -8,7 +8,8 @@ services:
     env_file:
       - backend/.env.dev
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     command: /bin/bash -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
 
   frontend:
@@ -29,6 +30,13 @@ services:
       - backend/.env.dev
     ports:
       - "5432:5432"
+    volumes:
+        - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U albins_dev" ]
+      interval: 1s
+      retries: 5
+      timeout: 3s
 
   nginx:
     image: nginx:alpine3.20
@@ -39,3 +47,6 @@ services:
       - frontend
     volumes:
       - ./yxorp/nginx.dev.conf:/etc/nginx/nginx.conf
+
+volumes:
+    pgdata:

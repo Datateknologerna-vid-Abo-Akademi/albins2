@@ -60,7 +60,6 @@ const Songs = () => {
                             style={{ cursor: "pointer" }}
                         >
                             <h2>{song.title}</h2>
-                            <p><strong>Author:</strong> {song.author}</p>
                             <p><strong>Melody:</strong> {song.melody}</p>
                         </div>
                     ))

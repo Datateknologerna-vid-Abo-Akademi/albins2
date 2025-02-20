@@ -8,7 +8,7 @@ sys.path.append("/app")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "albins2.settings")
 django.setup()
 
-from songs.models import Song, Category, SongBook
+from api.models import Song, Category, SongBook
 
 # Load JSON data
 json_file = "songs.json"

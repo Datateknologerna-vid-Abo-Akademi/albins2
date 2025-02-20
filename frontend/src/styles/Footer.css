@@ -1,22 +1,31 @@
-button.footer-nav {
-    min-width: 10vw;
-    width: 50%;
-    font-size: min(7vw, 3.5vh);
-    border: none;
-    border-radius: 5px;
-    background-color: #3a7a71ba;
-    cursor: pointer;
-    transition: transform 0.3s ease;
-}
-
 .footer {
     position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 5vh;
+    height: 10vh;
     display: flex;
-    background-color: #bffff55d;
+    align-items: center;
+    background-color: #5c6b73;
     font-size: 1.5vh;
-    color: #000;
+    color: #fff;
+    z-index: 1000; /* ensure it's on top */
+    padding: 0 10px;
 }
+
+button.footer-nav {
+    min-width: 10vw;
+    width: 50%;
+    font-size: min(7vw, 3.5vh);
+    border: none;
+    background-color: #5c6b73;
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+    border-right: 1px solid #fff;
+}
+
+button.footer-nav:last-child {
+    border-right: none;
+}
+

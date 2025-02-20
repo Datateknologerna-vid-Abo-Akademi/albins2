@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
+import "../styles/song.css";
 
 interface Song {
     id: number;
@@ -45,7 +46,6 @@ const Song = () => {
         <div className="song-container">
             <button className="back" onClick={() => navigate(-1)}>← Back</button>
             <h1>{song.title}</h1>
-            <p><strong>Author:</strong> {song.author}</p>
             <p><strong>Melody:</strong> {song.melody}</p>
             <h2>Lyrics</h2>
             <div dangerouslySetInnerHTML={{ __html: song.content }} />
