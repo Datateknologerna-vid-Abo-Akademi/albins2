@@ -44,7 +44,6 @@ const Song = () => {
 
     return (
         <div className="song-container">
-            <button className="back" onClick={() => navigate(-1)}>← Back</button>
             <h1>{song.title}</h1>
             <p><strong>Melody:</strong> {song.melody}</p>
             <h2>Lyrics</h2>

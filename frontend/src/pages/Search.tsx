@@ -126,75 +126,85 @@ const Search = () => {
         if (currentPage > 1) setCurrentPage(currentPage - 1);
     };
 
-  const handlePageSelect = (page: number) => {
-    setCurrentPage(page);
-  };
+    const handlePageSelect = (page: number) => {
+        setCurrentPage(page);
+    };
 
-  return (
-    <div className="search-container">
-      <h1>Search Songs</h1>
-      {error && <p className="error">{error}</p>}
-      <input
-        type="text"
-        placeholder="Search by title, lyrics, or author..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="search-input"
-        aria-label="Search songs"
-      />
-      <div className="songs-grid">
-        {currentResults.length > 0 ? (
-          currentResults.map((song) => (
-            <div
-              key={song.id}
-              className="song-card"
-              onClick={() => navigate(`/song/${song.id}`)}
-              style={{ cursor: "pointer" }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") navigate(`/song/${song.id}`);
-              }}
-              aria-label={`View details for ${song.title}`}
-            >
-              <h2>{song.title}</h2>
-              <p>
-                <strong>Melody:</strong> {song.melody}
-              </p>
-              <p>
-                <strong>Category:</strong> {song.category_name}
-              </p>
+    return (
+        <div className="search-container">
+            <h1>Search Songs</h1>
+            {error && <p className="error">{error}</p>}
+            <input
+                type="text"
+                placeholder="Search by title, lyrics, or author..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+                aria-label="Search songs"
+            />
+            <div className="songs-grid">
+                {currentResults.length > 0 ? (
+                    currentResults.map((song) => (
+                        <div
+                            key={song.id}
+                            className="song-card"
+                            onClick={() => navigate(`/song/${song.id}`)}
+                            style={{ cursor: "pointer" }}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") navigate(`/song/${song.id}`);
+                            }}
+                            aria-label={`View details for ${song.title}`}
+                        >
+                            <h2>{song.title}</h2>
+                            <p>
+                                <strong>Melody:</strong> {song.melody}
+                            </p>
+                            <p>
+                                <strong>Category:</strong> {song.category_name}
+                            </p>
+                        </div>
+                    ))
+                ) : (
+                    <p>No matching songs found.</p>
+                )}
             </div>
-          ))
-        ) : (
-          <p>No matching songs found.</p>
-        )}
-      </div>
-      {/* Pagination Controls */}
-      {filteredSongs.length > resultsPerPage && (
-        <div className="pagination-controls">
-          <button onClick={handlePrevPage} disabled={currentPage === 1}>
-            Previous
-          </button>
-          <div className="pagination-pages">
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i}
-                className={`page-button ${currentPage === i + 1 ? "active" : ""}`}
-                onClick={() => handlePageSelect(i + 1)}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
-          <button onClick={handleNextPage} disabled={currentPage === totalPages}>
-            Next
-          </button>
+            {/* Pagination Controls */}
+            {filteredSongs.length > 0 && (
+                <div className="pagination-controls">
+                    <button 
+                        className="nav-button" 
+                        onClick={handlePrevPage} 
+                        disabled={currentPage === 1}
+                        aria-label="Previous page"
+                    >
+                        ←
+                    </button>
+                    <div className="pagination-pages">
+                        {Array.from({ length: totalPages }, (_, i) => (
+                            <button
+                                key={i}
+                                className={`page-button ${currentPage === i + 1 ? "active" : ""}`}
+                                onClick={() => handlePageSelect(i + 1)}
+                            >
+                                {i + 1}
+                            </button>
+                        ))}
+                    </div>
+                    <button 
+                        className="nav-button" 
+                        onClick={handleNextPage} 
+                        disabled={currentPage === totalPages}
+                        aria-label="Next page"
+                    >
+                        →
+                    </button>
+                </div>
+            )}
+            <Footer />
         </div>
-      )}
-      <Footer />
-    </div>
-  );
+    );
 };
 
 export default Search;

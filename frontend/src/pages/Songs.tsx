@@ -48,7 +48,6 @@ const Songs = () => {
 
     return (
         <div className="songs-container">
-            <button className="back" onClick={() => navigate("/categories")}>← Back</button>
             <h1>{category}</h1>
             <div className="songs-grid">
                 {songs.length > 0 ? (

@@ -5,14 +5,3 @@ h1 {
 p {
     color: white;
 }
-
-.back {
-    position: absolute;
-    top: 0;
-    left: 0;
-    font-size: 3rem;
-    color: white;
-    cursor: pointer;
-    background: transparent;
-    border: none;
-}

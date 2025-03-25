@@ -1,1 +1,3 @@
 albins-data.json
+*.idea*
+.env

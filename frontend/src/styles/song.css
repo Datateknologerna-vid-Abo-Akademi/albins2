@@ -11,18 +11,6 @@
     margin: 40px auto 15vh; /* Adjusted bottom margin */
 }
 
-/* Back button styling */
-.back {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    font-size: 1.3rem; /* Slightly smaller */
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-}
-
 .song-container h1 {
     font-size: 2.3rem; /* Slightly smaller */
     margin-bottom: 10px;
