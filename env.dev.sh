@@ -12,6 +12,7 @@ set -a
 source "${ROOT_DIR}/.env.dev"
 set +a
 
-alias albins='docker compose -f docker-compose.dev.yml'
-alias albins_manage='docker compose -f docker-compose.dev.yml run --rm backend python manage.py'
+alias alb='docker compose -f docker-compose.dev.yml'
+alias alb-manage='docker compose -f docker-compose.dev.yml run --rm backend python manage.py'
+alias alb-pnpm='pnpm --dir frontend'
 alias albins_import_songs='docker compose -f docker-compose.dev.yml run --rm backend python scripts/import_songs.py'

@@ -65,7 +65,7 @@ const Search = () => {
         if (!cached) {
             (async () => {
                 try {
-                    const categories = await fetchCategories(auth.token);
+                    await fetchCategories(auth.token);
                     if (cancelled) return;
                     const refreshed = getAllSongsFromCategories();
                     applySongs(refreshed);

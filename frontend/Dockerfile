@@ -1,13 +1,15 @@
 FROM node:lts-alpine as builder
 
-RUN apk add --no-cache build-base libc6-compat gcompat curl
+RUN apk add --no-cache build-base libc6-compat gcompat
 
 RUN npm install -g pnpm
 
 WORKDIR /app
-COPY . .
 
-RUN pnpm install
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY . .
 RUN pnpm run build
 
 
