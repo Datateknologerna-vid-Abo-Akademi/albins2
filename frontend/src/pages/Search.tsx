@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Search.css";
 import Footer from "../components/Footer";
+import { fetchCategories, getAllSongsFromCategories } from "../services/categoryClient";
 
 interface Song {
     id: number;
@@ -17,6 +18,7 @@ const Search = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [filteredSongs, setFilteredSongs] = useState<Song[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -31,36 +33,57 @@ const Search = () => {
         const auth = JSON.parse(localStorage.getItem("auth") ?? "{}");
         if (!auth?.token) {
             setError("No valid authentication token found. Please authenticate first.");
+            setIsLoading(false);
             return;
         }
 
-        fetch("/api/songs/", {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Token ${auth.token}`,
-            },
-        })
-            .then((response) => {
-                if (!response.ok) throw new Error("Failed to fetch songs");
-                return response.json();
-            })
-            .then((data) => {
-                const formattedSongs = data.map((song: any) => ({
-                    id: song.id,
-                    title: song.title,
-                    author: song.author || "Unknown",
-                    melody: song.melody || "Unknown",
-                    category_name: song.category_name || "Unknown",
-                    content: song.content || "",
-                }));
-                setSongs(formattedSongs);
-                setFilteredSongs(formattedSongs);
-            })
-            .catch((error) => {
-                console.error("Fetching songs failed:", error);
-                setError("Failed to load songs. Please try again later.");
-            });
+        let cancelled = false;
+
+        const applySongs = (data: ReturnType<typeof getAllSongsFromCategories>) => {
+            if (!data || cancelled) return;
+            const formattedSongs: Song[] = data.map((song) => ({
+                id: song.id,
+                title: song.title,
+                author: song.author || "Unknown",
+                melody: song.melody || "Unknown",
+                category_name: song.categoryName || "Unknown",
+                content: song.content || "",
+            }));
+            setSongs(formattedSongs);
+            setFilteredSongs(formattedSongs);
+            setError(null);
+        };
+
+        const cached = getAllSongsFromCategories();
+        if (cached) {
+            applySongs(cached);
+            setIsLoading(false);
+        } else {
+            setIsLoading(true);
+        }
+
+        if (!cached) {
+            (async () => {
+                try {
+                    const categories = await fetchCategories(auth.token);
+                    if (cancelled) return;
+                    const refreshed = getAllSongsFromCategories();
+                    applySongs(refreshed);
+                } catch (err) {
+                    if (cancelled) return;
+                    console.error("Fetching songs failed:", err);
+                    setError("Failed to load songs. Please try again later.");
+                } finally {
+                    if (!cancelled) {
+                        setIsLoading(false);
+                    }
+                }
+            })();
+        }
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     // Re-filter songs when searchQuery changes
@@ -131,8 +154,8 @@ const Search = () => {
     };
 
     return (
-        <div className="search-container">
-            <h1>Search Songs</h1>
+        <div className="page-shell search-container">
+            <h1 className="page-heading">Search Songs</h1>
             {error && <p className="error">{error}</p>}
             <input
                 type="text"
@@ -142,14 +165,15 @@ const Search = () => {
                 className="search-input"
                 aria-label="Search songs"
             />
-            <div className="songs-grid">
-                {currentResults.length > 0 ? (
+            <div className="songs-grid card-grid">
+                {isLoading ? (
+                    <p className="empty-state">Loading songs…</p>
+                ) : currentResults.length > 0 ? (
                     currentResults.map((song) => (
                         <div
                             key={song.id}
-                            className="song-card"
+                            className="song-card card card--interactive card--center"
                             onClick={() => navigate(`/song/${song.id}`)}
-                            style={{ cursor: "pointer" }}
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => {
@@ -167,7 +191,7 @@ const Search = () => {
                         </div>
                     ))
                 ) : (
-                    <p>No matching songs found.</p>
+                    <p className="empty-state">No matching songs found.</p>
                 )}
             </div>
             {/* Pagination Controls */}

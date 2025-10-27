@@ -14,5 +14,8 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy project files
 COPY . .
 
-# Start server
+RUN chmod +x ./scripts/entrypoint.sh
+
+ENTRYPOINT ["./scripts/entrypoint.sh"]
+
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "albins2.wsgi:application"]

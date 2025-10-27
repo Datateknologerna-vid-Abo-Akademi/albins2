@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+from pathlib import Path
 import django
 
 # Set up Django environment
@@ -11,9 +12,17 @@ django.setup()
 from api.models import Song, Category, SongBook
 
 # Load JSON data
-json_file = "songs.json"
+script_dir = Path(__file__).resolve().parent
+env_source = os.environ.get("ALBINS_SONG_SOURCE")
 
-with open(json_file, "r", encoding="utf-8") as f:
+if env_source:
+    json_path = Path(env_source)
+    if not json_path.is_absolute():
+        json_path = script_dir / json_path
+else:
+    json_path = script_dir / "songs.json"
+
+with json_path.open("r", encoding="utf-8") as f:
     songs_data = json.load(f)
 
 # Get or create the songbook

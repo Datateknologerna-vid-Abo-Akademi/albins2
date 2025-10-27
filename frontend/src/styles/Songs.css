@@ -1,0 +1,18 @@
+.songs-container {
+    color: var(--color-text);
+    text-align: center;
+}
+
+.songs-grid {
+    margin: 0;
+}
+
+.song-card {
+    gap: clamp(0.45rem, 0.3rem + 0.6vw, 0.85rem);
+}
+
+.song-card p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: clamp(0.95rem, 0.9rem + 0.2vw, 1.05rem);
+}

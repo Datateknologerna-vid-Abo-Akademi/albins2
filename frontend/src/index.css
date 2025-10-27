@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import './styles/variables.css';
+@import './styles/shared.css';
 
 * {
     margin: 0;
@@ -9,6 +10,9 @@
 
 body {
     margin: 0;
+    background:
+        radial-gradient(120% 120% at 50% 0%, rgba(55, 127, 196, 0.25), transparent 65%),
+        linear-gradient(180deg, #070b18 0%, #0b1020 60%, #0a1124 100%);
     background-color: var(--color-background);
     color: var(--color-text);
     font-family: var(--font-family-base);

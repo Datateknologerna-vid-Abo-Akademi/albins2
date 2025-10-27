@@ -25,7 +25,7 @@ class CategoryFormInline(OrderableAdmin, admin.TabularInline):
     ordering_field = ("order",)
     ordering = ["order"]
     fields = ["order", "name"]
-    ordering_field_hide_input = True
+    ordering_field_hide_input = False
 
 
 # Register your models here.
@@ -41,10 +41,11 @@ class SongAdmin(admin.ModelAdmin):
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     inlines = [SongFormInline]
-    exclude = ["order"]
-    list_display = ["name", "songbook"]
+    list_display = ["name", "songbook", "order"]
+    list_editable = ["order"]
     list_filter = ["songbook"]
     search_fields = ["name"]
+    ordering = ["songbook", "order", "name"]
 
 
 @admin.register(SongBook)

@@ -1,49 +1,86 @@
 .song-container {
-    background-color: #5c6b73; /* Matches category & search page card colors */
-    color: white;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
-    width: 90%; /* Made wider */
-    max-width: 1000px; /* Increased max width */
-    min-width: 20vw;
-    text-align: center;
-    margin: 40px auto 15vh; /* Adjusted bottom margin */
+    --song-content-padding: clamp(0.75rem, 0.9rem + 0.5vw, 1.25rem);
+    background: var(--gradient-card);
+    color: var(--color-text);
+    padding: clamp(0.3rem, 0.25rem + 0.7vw, 0.8rem);
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(18px);
+    width: min(100%, 36rem);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1rem, 1.1rem + 0.6vw, 1.9rem);
 }
 
-.song-container h1 {
-    font-size: 2.3rem; /* Slightly smaller */
-    margin-bottom: 10px;
+.song-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    text-align: left;
+    padding-inline: var(--song-content-padding);
 }
 
-.song-container p {
-    font-size: 1.1rem;
-    margin: 5px 0; /* Reduced spacing */
+.song-header h1 {
+    font-size: clamp(1.9rem, 2vw + 1.5rem, 2.75rem);
+    margin: 0;
+    line-height: 1.15;
+    color: var(--color-text);
 }
 
-.song-container p:empty::before {
-    content: "\A"; /* Forces a line break */
-    white-space: pre;
-    display: block;
+.song-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: clamp(1rem, 0.9rem + 0.3vw, 1.15rem);
+    color: var(--color-text-secondary);
+}
+
+.song-meta p {
+    margin: 0;
 }
 
 .song-container h2 {
-    font-size: 1.5rem; /* Slightly smaller */
-    margin-top: 15px;
-}
-
-/* Styling for lyrics section */
-.song-container div {
-    padding: 15px;
-    border-radius: 8px;
-    margin-top: 10px; /* Reduced spacing */
+    font-size: clamp(1.25rem, 0.9rem + 1vw, 1.75rem);
+    margin: 0;
     text-align: left;
-    line-height: 1.4; /* Tighter line spacing */
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+    padding-inline: var(--song-content-padding);
 }
 
-/* Ensure the footer does not overlap */
-.song-container + .footer {
-    margin-top: 15px;
+.song-lyrics {
+    padding: var(--song-content-padding);
+    text-align: left;
+    font-size: clamp(0.9rem, 0.88rem + 0.3vw, 1.05rem);
+    word-break: break-word;
+    overflow-x: auto;
+    color: var(--color-text);
+}
+
+.song-lyrics p {
+    margin: 0;
+    line-height: 1.25;
+}
+
+.song-lyrics p + p {
+    margin-top: 0.2rem;
+}
+
+.song-lyrics p:empty {
+    margin: 0;
+    height: 1.4rem;
+}
+
+.song-lyrics p:empty::before {
+    content: "";
+    display: block;
+    height: 100%;
+}
+
+@media (min-width: 768px) {
+    .song-meta {
+        flex-direction: row;
+        align-items: center;
+        gap: 1.75rem;
+    }
 }

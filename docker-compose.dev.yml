@@ -6,7 +6,7 @@ services:
     volumes:
       - ./backend:/app
     env_file:
-      - backend/.env.dev
+      - ./.env.dev
     depends_on:
       db:
         condition: service_healthy
@@ -27,7 +27,7 @@ services:
     image: postgres:16-alpine
     restart: always
     env_file:
-      - backend/.env.dev
+      - ./.env.dev
     ports:
       - "5432:5432"
     volumes:

@@ -1,6 +1,8 @@
 services:
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     restart: always
     expose:
       - "80"
@@ -12,15 +14,17 @@ services:
       - albins-net
 
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
     image: albins2_api:latest
     restart: always
     depends_on:
-      - db
-    command: >
-      /bin/bash -c "./scripts/wait-for-postgres.sh db:5432 &&
-                    python manage.py migrate --noinput &&
-                    python manage.py runserver 0.0.0.0:8000"
+      db:
+        condition: service_healthy
+      - redis
+    env_file:
+      - ./.env.prod
     expose:
       - "8000"
     volumes:
@@ -35,16 +39,19 @@ services:
   db:
     image: postgres:16-alpine
     restart: always
-    environment:
-      POSTGRES_USER: albins
-      POSTGRES_PASSWORD: albins
-      POSTGRES_DB: albins
+    env_file:
+      - ./.env.prod
     ports:
       - "5432:5432"
     volumes:
       - albins_postgres_data:/var/lib/postgresql/data/
     networks:
       - albins-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U albins"]
+      interval: 5s
+      retries: 12
+      timeout: 3s
 
   redis:
     image: redis:7-alpine

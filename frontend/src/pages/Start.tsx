@@ -1,18 +1,18 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Start.css";
 import Albin from "../components/Albin.tsx";
+import { clearCategoryCache, fetchCategories } from "../services/categoryClient";
 
 const Start = () => {
   const navigate = useNavigate();
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const handleClick = async () => {
     try {
-      const response = await fetch('/api/auth/login/', {
+      setIsAuthenticating(true);
+      const response = await fetch('/api/auth/anonymous-login/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username: 'test', password: '5d!6F8BJtK$GRNypjs&g' }),
       });
 
       if (!response.ok) {
@@ -20,20 +20,31 @@ const Start = () => {
       }
 
       const data = await response.json();
-      const auth = { token: data.token, expiry: new Date(Date.now() + 3600 * 1000).toISOString() };
+      const expiry = data.expiry ? new Date(data.expiry).toISOString() : new Date(Date.now() + 3600 * 1000).toISOString();
+      const auth = { token: data.token, expiry };
       window.localStorage.setItem('auth', JSON.stringify(auth));
+      clearCategoryCache();
+      try {
+        await fetchCategories(auth.token);
+      } catch (prefetchErr) {
+        console.warn("Prefetching categories failed:", prefetchErr);
+      }
 
       // Redirect to categories page
       navigate("/categories");
     } catch (error) {
       console.error("Login error:", error);
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
   return (
       <div className="start-container">
           <Albin />
-          <button onClick={handleClick}>Skål!</button>
+          <button onClick={handleClick} disabled={isAuthenticating}>
+              {isAuthenticating ? "Laddar…" : "Skål!"}
+          </button>
       </div>
   );
 };

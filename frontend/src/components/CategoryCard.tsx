@@ -3,7 +3,10 @@ import "../styles/Categories.css";
 import React from "react";
 
 interface CategoryCardProps {
-    category: string;
+    category: {
+        id: number;
+        name: string;
+    };
 }
 
 const CategoryCard: React.FC<CategoryCardProps> = ({ category }) => {
@@ -11,14 +14,14 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category }) => {
 
     return (
         <div
-            className="category-card"
-            onClick={() => navigate(`/songs?category=${encodeURIComponent(category)}`)}
+            className="category-card card card--interactive card--center"
+            onClick={() => navigate(`/songs?category=${encodeURIComponent(category.name)}`)}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === "Enter") navigate(`/songs?category=${encodeURIComponent(category)}`); }}
-            aria-label={`View songs in category ${category}`}
+            onKeyDown={(e) => { if (e.key === "Enter") navigate(`/songs?category=${encodeURIComponent(category.name)}`); }}
+            aria-label={`View songs in category ${category.name}`}
         >
-            <h2>{category}</h2>
+            <h2>{category.name}</h2>
         </div>
     );
 };
