@@ -1,22 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/Search.css";
 import Footer from "../components/Footer";
-import { fetchCategories, getAllSongsFromCategories } from "../services/categoryClient";
+import PaginationControls from "../components/PaginationControls";
+import SongList from "../components/SongList";
+import SongSearchInput from "../components/SongSearchInput";
+import "../styles/Search.css";
+import { SongWithCategory, fetchCategories, getAllSongsFromCategories } from "../services/categoryClient";
 
-interface Song {
-    id: number;
-    title: string;
+type SearchSong = SongWithCategory & {
     author: string;
     melody: string;
-    category_name: string;
-    content?: string;
-}
+    content: string;
+};
 
 const Search = () => {
-    const [songs, setSongs] = useState<Song[]>([]);
+    const [songs, setSongs] = useState<SearchSong[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
-    const [filteredSongs, setFilteredSongs] = useState<Song[]>([]);
+    const [filteredSongs, setFilteredSongs] = useState<SearchSong[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -41,12 +41,14 @@ const Search = () => {
 
         const applySongs = (data: ReturnType<typeof getAllSongsFromCategories>) => {
             if (!data || cancelled) return;
-            const formattedSongs: Song[] = data.map((song) => ({
+            const formattedSongs: SearchSong[] = data.map((song) => ({
                 id: song.id,
                 title: song.title,
                 author: song.author || "Unknown",
                 melody: song.melody || "Unknown",
-                category_name: song.categoryName || "Unknown",
+                category: song.category,
+                categoryName: song.categoryName || "Unknown",
+                order: song.order,
                 content: song.content || "",
             }));
             setSongs(formattedSongs);
@@ -97,12 +99,12 @@ const Search = () => {
         const queryNorm = normalize(searchQuery);
 
         // Ranking logic for sorting results
-        const rankSong = (song: Song): number | null => {
+        const rankSong = (song: SearchSong): number | null => {
             let rank: number | null = null;
             const titleNorm = normalize(song.title);
             const authorNorm = normalize(song.author);
             const melodyNorm = normalize(song.melody);
-            const categoryNorm = normalize(song.category_name);
+            const categoryNorm = normalize(song.categoryName);
             const contentNorm = normalize(song.content || "");
 
             if (titleNorm.includes(queryNorm)) {
@@ -129,7 +131,7 @@ const Search = () => {
                 const rank = rankSong(song);
                 return rank !== null ? { ...song, rank } : null;
             })
-            .filter((song): song is Song & { rank: number } => song !== null)
+            .filter((song): song is SearchSong & { rank: number } => song !== null)
             .sort((a, b) => a.rank - b.rank);
 
         setFilteredSongs(matchedSongs);
@@ -156,75 +158,27 @@ const Search = () => {
     return (
         <div className="page-shell search-container">
             <h1 className="page-heading">Search Songs</h1>
-            {error && <p className="error">{error}</p>}
-            <input
-                type="text"
-                placeholder="Search by title, lyrics, or author..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
-                aria-label="Search songs"
+            <SongSearchInput value={searchQuery} onChange={setSearchQuery} />
+            <SongList
+                songs={currentResults}
+                isLoading={isLoading}
+                error={error}
+                layout="center"
+                emptyMessage="No matching songs found."
+                onSelectSong={(songId) => navigate(`/song/${songId}`)}
+                getDetails={(song) => [
+                    { label: "Melody", value: song.melody || "Unknown" },
+                    { label: "Category", value: song.categoryName || "Unknown" },
+                ]}
             />
-            <div className="songs-grid card-grid">
-                {isLoading ? (
-                    <p className="empty-state">Loading songs…</p>
-                ) : currentResults.length > 0 ? (
-                    currentResults.map((song) => (
-                        <div
-                            key={song.id}
-                            className="song-card card card--interactive card--center"
-                            onClick={() => navigate(`/song/${song.id}`)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") navigate(`/song/${song.id}`);
-                            }}
-                            aria-label={`View details for ${song.title}`}
-                        >
-                            <h2>{song.title}</h2>
-                            <p>
-                                <strong>Melody:</strong> {song.melody}
-                            </p>
-                            <p>
-                                <strong>Category:</strong> {song.category_name}
-                            </p>
-                        </div>
-                    ))
-                ) : (
-                    <p className="empty-state">No matching songs found.</p>
-                )}
-            </div>
-            {/* Pagination Controls */}
             {filteredSongs.length > 0 && (
-                <div className="pagination-controls">
-                    <button 
-                        className="nav-button" 
-                        onClick={handlePrevPage} 
-                        disabled={currentPage === 1}
-                        aria-label="Previous page"
-                    >
-                        ←
-                    </button>
-                    <div className="pagination-pages">
-                        {Array.from({ length: totalPages }, (_, i) => (
-                            <button
-                                key={i}
-                                className={`page-button ${currentPage === i + 1 ? "active" : ""}`}
-                                onClick={() => handlePageSelect(i + 1)}
-                            >
-                                {i + 1}
-                            </button>
-                        ))}
-                    </div>
-                    <button 
-                        className="nav-button" 
-                        onClick={handleNextPage} 
-                        disabled={currentPage === totalPages}
-                        aria-label="Next page"
-                    >
-                        →
-                    </button>
-                </div>
+                <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onNext={handleNextPage}
+                    onPrev={handlePrevPage}
+                    onSelectPage={handlePageSelect}
+                />
             )}
             <Footer />
         </div>

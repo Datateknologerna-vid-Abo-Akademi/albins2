@@ -3,6 +3,7 @@
     background: var(--gradient-card);
     color: var(--color-text);
     padding: clamp(0.3rem, 0.25rem + 0.7vw, 0.8rem);
+    padding-top: clamp(1.1rem, 0.9rem + 1.1vw, 1.9rem);
     border-radius: 16px;
     box-shadow: 0 10px 24px rgba(2, 6, 23, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.08);

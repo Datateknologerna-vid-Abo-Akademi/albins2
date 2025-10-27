@@ -11,6 +11,10 @@
     gap: clamp(0.45rem, 0.3rem + 0.6vw, 0.85rem);
 }
 
+.song-card h2 {
+    margin: clamp(0.2rem, 0.15rem + 0.3vw, 0.45rem) 0 0;
+}
+
 .song-card p {
     margin: 0;
     color: var(--color-text-secondary);

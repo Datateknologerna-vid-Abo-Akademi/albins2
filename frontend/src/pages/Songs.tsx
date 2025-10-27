@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Footer from "../components/Footer";
+import SongList from "../components/SongList";
 import "../styles/Songs.css";
-import { CategoryWithSongs, fetchCategories, getCachedCategories } from "../services/categoryClient";
-
-type SongSummary = CategoryWithSongs["songs"][number];
+import { CategoryWithSongs, SongSummary, fetchCategories, getCachedCategories } from "../services/categoryClient";
 
 const Songs = () => {
     const [songs, setSongs] = useState<SongSummary[]>([]);
@@ -79,26 +78,12 @@ const Songs = () => {
     return (
         <div className="page-shell songs-container">
             <h1 className="page-heading">{category}</h1>
-            <div className="songs-grid card-grid">
-                {isLoading ? (
-                    <p className="empty-state">Loading songs…</p>
-                ) : error ? (
-                    <p className="empty-state">{error}</p>
-                ) : songs.length > 0 ? (
-                    songs.map((song) => (
-                        <div
-                            key={song.id}
-                            className="song-card card card--interactive card--left"
-                            onClick={() => navigate(`/song/${song.id}`)}
-                        >
-                            <h2>{song.title}</h2>
-                            <p><strong>Melody:</strong> {song.melody || "Unknown"}</p>
-                        </div>
-                    ))
-                ) : (
-                    <p className="empty-state">No songs found in this category.</p>
-                )}
-            </div>
+            <SongList
+                songs={songs}
+                isLoading={isLoading}
+                error={error}
+                onSelectSong={(songId) => navigate(`/song/${songId}`)}
+            />
             <Footer />
         </div>
     );

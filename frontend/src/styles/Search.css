@@ -30,6 +30,7 @@
     font-size: clamp(1.2rem, 1rem + 0.6vw, 1.5rem);
     color: var(--color-text);
     text-align: center;
+    margin: clamp(0.2rem, 0.15rem + 0.3vw, 0.45rem) 0 0;
 }
 
 .song-card p {
