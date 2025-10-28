@@ -4,12 +4,14 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     restart: always
-    expose:
-      - "80"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`yourdomain.com`)"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+    volumes:
+      - ./yxorp/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - static_data:/app/static:ro
+      - media_data:/app/media:ro
     networks:
       - albins-net
 
@@ -29,10 +31,8 @@ services:
       - "8000"
     volumes:
       - ./albins-data.json:/code/albins-data.json:ro
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`yourdomain.com`) && (PathPrefix(`/api`) || PathPrefix(`/ckeditor5`))"
-      - "traefik.http.services.api.loadbalancer.server.port=8000"
+      - static_data:/app/static
+      - media_data:/app/media
     networks:
       - albins-net
 
@@ -59,22 +59,10 @@ services:
     networks:
       - albins-net
 
-  traefik:
-    image: traefik:latest
-    restart: always
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-    ports:
-      - "80:80"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - albins-net
-
 volumes:
   albins_postgres_data:
+  static_data:
+  media_data:
 
 networks:
   albins-net:
