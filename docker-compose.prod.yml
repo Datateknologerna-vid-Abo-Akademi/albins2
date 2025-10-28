@@ -24,7 +24,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      - redis
     env_file:
       - ./.env.prod
     expose:
@@ -52,12 +51,6 @@ services:
       interval: 5s
       retries: 12
       timeout: 3s
-
-  redis:
-    image: redis:7-alpine
-    restart: always
-    networks:
-      - albins-net
 
 volumes:
   albins_postgres_data:

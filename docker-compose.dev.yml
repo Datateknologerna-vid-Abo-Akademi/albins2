@@ -10,7 +10,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: /bin/bash -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
+    command: /bin/bash -c "python manage.py migrate --noinput && python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"
 
   frontend:
     build:
@@ -47,6 +47,8 @@ services:
       - frontend
     volumes:
       - ./yxorp/nginx.dev.conf:/etc/nginx/nginx.conf
+      - ./backend/static:/app/static
+      - ./backend/media:/app/media
 
 volumes:
     pgdata:

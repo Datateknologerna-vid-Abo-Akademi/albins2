@@ -3,8 +3,6 @@ django-rest-framework
 psycopg2-binary
 django-ckeditor-5
 django-admin-ordering==0.16.1
-channels
-channels_redis
 six
 django_cleanup
 django-rest-knox~=5.0.2
