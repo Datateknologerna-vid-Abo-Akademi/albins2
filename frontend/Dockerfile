@@ -1,8 +1,8 @@
-FROM node:lts-alpine as builder
+FROM node:20-alpine as builder
 
 RUN apk add --no-cache build-base libc6-compat gcompat
 
-RUN npm install -g pnpm
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
 

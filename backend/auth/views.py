@@ -1,12 +1,12 @@
 from django.contrib.auth import get_user_model, login
-from knox.models import AuthToken
-from knox.views import LoginView as KnoxLoginView
-from django.utils import timezone
+from django.conf import settings
 from rest_framework import permissions, status
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from albins2 import settings
+from django.utils import timezone
+from knox.models import AuthToken
+from knox.views import LoginView as KnoxLoginView
 
 
 class LoginView(KnoxLoginView):

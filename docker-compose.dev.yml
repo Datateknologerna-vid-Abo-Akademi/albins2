@@ -21,7 +21,7 @@ services:
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
-    command: ["npm", "run", "dev"]
+    command: ["pnpm", "dev"]
 
   db:
     image: postgres:16-alpine
