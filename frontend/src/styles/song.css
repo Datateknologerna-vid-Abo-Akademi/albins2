@@ -78,6 +78,14 @@
     height: 100%;
 }
 
+.song-page-number {
+    margin-top: auto;
+    align-self: center;
+    font-size: clamp(1.1rem, 0.95rem + 0.4vw, 1.3rem);
+    color: var(--color-text);
+    letter-spacing: 0.08em;
+}
+
 @media (min-width: 768px) {
     .song-meta {
         flex-direction: row;

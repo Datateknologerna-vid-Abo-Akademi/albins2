@@ -12,7 +12,7 @@ class SongFormInline(OrderableAdmin, admin.TabularInline):
     can_add = False
     ordering_field = ("order",)
     ordering = ["order"]
-    fields = ["order", "title"]
+    fields = ["order", "title", "page_number"]
     ordering_field_hide_input = True
 
 
@@ -33,7 +33,8 @@ class CategoryFormInline(OrderableAdmin, admin.TabularInline):
 @admin.register(Song)
 class SongAdmin(admin.ModelAdmin):
     exclude = ["order"]
-    list_display = ["title", "category"]
+    list_display = ["title", "category", "page_number"]
+    list_editable = ["page_number"]
     list_filter = ["category"]
     search_fields = ["title", "melody", "author", "content"]
 

@@ -8,6 +8,7 @@ export interface SongSummary {
   author: string | null;
   melody: string | null;
   order: number | null;
+  page_number: number | null;
   content: string | null;
   category: number;
 }

@@ -12,6 +12,7 @@ interface SongDetail {
     content: string | null;
     categoryId: number | null;
     categoryName: string;
+    page_number: number | null;
 }
 
 const hydrateSong = (songId: number, categories: CategoryWithSongs[] | null): SongDetail | null => {
@@ -27,6 +28,7 @@ const hydrateSong = (songId: number, categories: CategoryWithSongs[] | null): So
                 content: match.content,
                 categoryId: category.id,
                 categoryName: category.name,
+                page_number: match.page_number ?? null,
             };
         }
     }
@@ -103,6 +105,7 @@ const Song = () => {
                     content: data.content ?? null,
                     categoryId: data.category ?? null,
                     categoryName: categories?.find((cat) => cat.id === data.category)?.name ?? "",
+                    page_number: data.page_number ?? null,
                 };
 
                 setSong(hydrated);
@@ -161,6 +164,11 @@ const Song = () => {
                 </header>
                 <h2>Lyrics</h2>
                 <div className="song-lyrics" dangerouslySetInnerHTML={{ __html: song.content || "" }} />
+                {song.page_number !== null && (
+                    <div className="song-page-number" aria-label="Songbook page number">
+                        {song.page_number}
+                    </div>
+                )}
             </article>
             <Footer />
         </div>

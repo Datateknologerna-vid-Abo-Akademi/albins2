@@ -49,6 +49,7 @@ const Search = () => {
                 category: song.category,
                 categoryName: song.categoryName || "Unknown",
                 order: song.order,
+                page_number: song.page_number,
                 content: song.content || "",
             }));
             setSongs(formattedSongs);
@@ -106,6 +107,10 @@ const Search = () => {
             const melodyNorm = normalize(song.melody);
             const categoryNorm = normalize(song.categoryName);
             const contentNorm = normalize(song.content || "");
+
+            if (song.page_number !== null && song.page_number.toString() === searchQuery.trim()) {
+                return 0;
+            }
 
             if (titleNorm.includes(queryNorm)) {
                 rank = titleNorm === queryNorm ? 1 : 2;

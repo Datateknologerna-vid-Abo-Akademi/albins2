@@ -97,6 +97,21 @@
     align-items: flex-start;
 }
 
+.song-card__page {
+    margin-top: auto;
+    color: var(--color-accent);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.card--left .song-card__page {
+    align-self: flex-start;
+}
+
+.card--center .song-card__page {
+    align-self: center;
+}
+
 .empty-state {
     color: var(--color-text-secondary);
     font-size: clamp(1rem, 0.95rem + 0.3vw, 1.15rem);
