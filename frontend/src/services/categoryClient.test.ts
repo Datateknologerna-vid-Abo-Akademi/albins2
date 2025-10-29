@@ -34,8 +34,26 @@ const buildCategoriesFixture = (): CategoryWithSongs[] => [
         name: "Zeta",
         order: 2,
         songs: [
-            { id: 20, title: "Beta Song", author: null, melody: null, order: 3, content: null, category: 2 },
-            { id: 21, title: "Alpha Song", author: null, melody: null, order: 1, content: null, category: 2 },
+            {
+                id: 20,
+                title: "Beta Song",
+                author: null,
+                melody: null,
+                order: 3,
+                page_number: 120,
+                content: null,
+                category: 2,
+            },
+            {
+                id: 21,
+                title: "Alpha Song",
+                author: null,
+                melody: null,
+                order: 1,
+                page_number: 115,
+                content: null,
+                category: 2,
+            },
         ],
     },
     {
@@ -43,7 +61,16 @@ const buildCategoriesFixture = (): CategoryWithSongs[] => [
         name: "Gamma",
         order: null,
         songs: [
-            { id: 30, title: "Gamma Song", author: null, melody: null, order: null, content: null, category: 3 },
+            {
+                id: 30,
+                title: "Gamma Song",
+                author: null,
+                melody: null,
+                order: null,
+                page_number: null,
+                content: null,
+                category: 3,
+            },
         ],
     },
     {
@@ -51,8 +78,26 @@ const buildCategoriesFixture = (): CategoryWithSongs[] => [
         name: "Alpha",
         order: 2,
         songs: [
-            { id: 10, title: "Delta Song", author: null, melody: null, order: null, content: null, category: 1 },
-            { id: 11, title: "Alpha Song", author: null, melody: null, order: 2, content: null, category: 1 },
+            {
+                id: 10,
+                title: "Delta Song",
+                author: null,
+                melody: null,
+                order: null,
+                page_number: null,
+                content: null,
+                category: 1,
+            },
+            {
+                id: 11,
+                title: "Alpha Song",
+                author: null,
+                melody: null,
+                order: 2,
+                page_number: 45,
+                content: null,
+                category: 1,
+            },
         ],
     },
     {
@@ -60,7 +105,16 @@ const buildCategoriesFixture = (): CategoryWithSongs[] => [
         name: "Omega",
         order: 5,
         songs: [
-            { id: 40, title: "Omega Song", author: null, melody: null, order: 1, content: null, category: 4 },
+            {
+                id: 40,
+                title: "Omega Song",
+                author: null,
+                melody: null,
+                order: 1,
+                page_number: 5,
+                content: null,
+                category: 4,
+            },
         ],
     },
 ];
