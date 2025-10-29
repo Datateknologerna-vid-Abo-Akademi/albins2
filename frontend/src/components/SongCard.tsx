@@ -1,7 +1,7 @@
 import { SongSummary } from "../services/categoryClient";
 
 export type SongDetail = {
-    label: string;
+    label: string | null;
     value: string;
 };
 
@@ -39,11 +39,20 @@ const SongCard = ({
             aria-label={`View details for ${song.title}`}
         >
             <h2>{song.title}</h2>
-            {details?.map((detail) => (
-                <p key={detail.label}>
-                    <strong>{detail.label}:</strong> {detail.value}
-                </p>
-            ))}
+            {details?.map((detail, index) => {
+                const key = detail.label ? `${detail.label}-${index}` : `${detail.value}-${index}`;
+                return (
+                    <p key={key}>
+                        {detail.label ? (
+                            <>
+                                <strong>{detail.label}:</strong> {detail.value}
+                            </>
+                        ) : (
+                            detail.value
+                        )}
+                    </p>
+                );
+            })}
             {song.page_number !== null && (
                 <p className="song-card__page">Page {song.page_number}</p>
             )}

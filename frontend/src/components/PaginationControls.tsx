@@ -13,6 +13,41 @@ const PaginationControls = ({
     onPrev,
     onSelectPage,
 }: PaginationControlsProps) => {
+    const buildPageItems = () => {
+        const pages = new Set<number>();
+        pages.add(1);
+        pages.add(totalPages);
+        pages.add(currentPage);
+
+        if (currentPage - 1 >= 1) {
+            pages.add(currentPage - 1);
+        }
+
+        if (currentPage + 1 <= totalPages) {
+            pages.add(currentPage + 1);
+        }
+
+        const sortedPages = Array.from(pages).sort((a, b) => a - b);
+
+        const items: Array<{ type: "page"; value: number } | { type: "ellipsis"; key: string }> = [];
+
+        sortedPages.forEach((page, index) => {
+            if (index > 0) {
+                const previous = sortedPages[index - 1];
+                if (page - previous > 1) {
+                    items.push({
+                        type: "ellipsis",
+                        key: `ellipsis-${previous}-${page}`,
+                    });
+                }
+            }
+
+            items.push({ type: "page", value: page });
+        });
+
+        return items;
+    };
+
     if (totalPages <= 1) {
         return null;
     }
@@ -28,8 +63,17 @@ const PaginationControls = ({
                 ←
             </button>
             <div className="pagination-pages">
-                {Array.from({ length: totalPages }, (_, index) => {
-                    const pageNumber = index + 1;
+                {buildPageItems().map((item) => {
+                    if (item.type === "ellipsis") {
+                        return (
+                            <span key={item.key} className="page-ellipsis" aria-hidden="true">
+                                …
+                            </span>
+                        );
+                    }
+
+                    const pageNumber = item.value;
+
                     return (
                         <button
                             key={pageNumber}
