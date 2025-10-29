@@ -28,3 +28,4 @@
 ## Environment & Configuration
 - Root-level `.env.dev`/`.env.prod` hold sample configuration (including `SERVICE_ACCOUNT_USERNAME`/`SERVICE_ACCOUNT_EMAIL` for anonymous login and default `DJANGO_ALLOWED_HOSTS`). Source `env.dev.sh` or `env.prod.sh` to export variables and load shell aliases (`alb`, `alb-manage`, `alb-pnpm`, `albins_import_songs`). Each script wires those aliases to its own compose file; add additional hosts (e.g., LAN IPs) to `DJANGO_ALLOWED_HOSTS` as needed.
 - Database changes require migrations (`python manage.py makemigrations`) checked into the respective app. Document any new ENV vars in both `.env` templates and the PR description.
+- Agents must not handcraft migration files. Ask the user to run `alb-manage makemigrations` when schema changes are needed.

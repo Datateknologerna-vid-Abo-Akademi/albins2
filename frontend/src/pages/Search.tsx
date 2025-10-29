@@ -50,6 +50,7 @@ const Search = () => {
                 categoryName: song.categoryName || "Unknown",
                 order: song.order,
                 page_number: song.page_number,
+                negative_page_number: song.negative_page_number,
                 content: song.content || "",
             }));
             setSongs(formattedSongs);
@@ -108,8 +109,19 @@ const Search = () => {
             const categoryNorm = normalize(song.categoryName);
             const contentNorm = normalize(song.content || "");
 
-            if (song.page_number !== null && song.page_number.toString() === searchQuery.trim()) {
-                return 0;
+            const trimmedQuery = searchQuery.trim();
+            if (trimmedQuery) {
+                const numericQuery = Number(trimmedQuery);
+                const isNumeric = Number.isFinite(numericQuery);
+                const matchesNumber = (value: number | null) => {
+                    if (value === null) return false;
+                    if (value.toString() === trimmedQuery) return true;
+                    return isNumeric && value === numericQuery;
+                };
+
+                if (matchesNumber(song.page_number) || matchesNumber(song.negative_page_number)) {
+                    return 0;
+                }
             }
 
             if (titleNorm.includes(queryNorm)) {

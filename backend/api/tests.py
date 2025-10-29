@@ -57,6 +57,37 @@ class SongModelTests(TestCase):
 
         self.assertEqual(song.order, 3)
 
+    def test_retains_null_negative_when_not_provided(self):
+        song = Song.objects.create(
+            title="Standard Page",
+            category=self.category,
+            page_number=10,
+        )
+
+        self.assertEqual(song.page_number, 10)
+        self.assertIsNone(song.negative_page_number)
+
+    def test_retains_null_page_when_only_negative_provided(self):
+        song = Song.objects.create(
+            title="Flipped Only",
+            category=self.category,
+            negative_page_number=-12,
+        )
+
+        self.assertIsNone(song.page_number)
+        self.assertEqual(song.negative_page_number, -12)
+
+    def test_coerces_signs_when_both_provided(self):
+        song = Song.objects.create(
+            title="Matching Pair",
+            category=self.category,
+            page_number=-7,
+            negative_page_number=9,
+        )
+
+        self.assertEqual(song.page_number, 7)
+        self.assertEqual(song.negative_page_number, -9)
+
 
 class SongBookViewSetTests(APITestCase):
     def setUp(self):

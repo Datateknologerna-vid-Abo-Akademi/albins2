@@ -9,6 +9,7 @@ export interface SongSummary {
   melody: string | null;
   order: number | null;
   page_number: number | null;
+  negative_page_number: number | null;
   content: string | null;
   category: number;
 }

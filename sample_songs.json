@@ -1,0 +1,24 @@
+[
+  {
+    "title": "Positive Page Song",
+    "melody": "Bright Melody",
+    "category": "Morning Hymns",
+    "text": "Line one of the song\nLine two follows",
+    "page_number": 12
+  },
+  {
+    "title": "Negative Page Song",
+    "melody": "Flip Tune",
+    "category": "Evening Chants",
+    "text": "First flipped line\nSecond flipped line",
+    "negative_page_number": -34
+  },
+  {
+    "title": "Both Pages Song",
+    "melody": "Dual Melody",
+    "category": "Special Pieces",
+    "text": "Original lyrics line\nAnother lyric line",
+    "page_number": 22,
+    "negative_page_number": -22
+  }
+]
