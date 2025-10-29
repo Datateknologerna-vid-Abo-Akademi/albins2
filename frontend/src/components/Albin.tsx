@@ -12,7 +12,7 @@ const Albin = ({ onFall }: AlbinProps) => {
     const clickTrackerRef = useRef<{
         count: number;
         lastTimestamp: number;
-        timeoutId: ReturnType<typeof window.setTimeout> | null;
+        timeoutId: number | null;
     }>({
         count: 0,
         lastTimestamp: 0,
