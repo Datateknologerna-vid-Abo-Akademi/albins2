@@ -1,7 +1,8 @@
+import json
 import os
 import sys
-import json
 from pathlib import Path
+
 import django
 
 # Set up Django environment
@@ -9,7 +10,7 @@ sys.path.append("/app")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "albins2.settings")
 django.setup()
 
-from api.models import Song, Category, SongBook
+from api.models import Category, Song, SongBook
 
 # Load JSON data
 script_dir = Path(__file__).resolve().parent
@@ -34,21 +35,49 @@ for song_entry in songs_data:
     category_name = song_entry["category"]
     category, _ = Category.objects.get_or_create(name=category_name, songbook=songbook)
 
-    content = song_entry["text"].replace('\n', '</p><p>')  # Format lyrics with paragraph tags
+    content = song_entry["text"].replace('\n', '</p><p>')
     content = f"<p>{content}</p>"
 
-    song, created = Song.objects.get_or_create(
-        title=song_entry["title"],
-        defaults={
-            "melody": song_entry.get("melody", ""),
-            "author": "",
-            "content": content,
-            "category": category,
-            "order": None,  # Order will be set automatically by model
-        },
+    raw_page = (
+        song_entry.get("page_number")
+        or song_entry.get("page")
+        or song_entry.get("pageNumber")
+    )
+    raw_negative_page = (
+        song_entry.get("negative_page_number")
+        or song_entry.get("flipped_page_number")
+        or song_entry.get("flippedPageNumber")
     )
 
-    if created:
-        song.save()
+    page_number = None
+    negative_page_number = None
+
+    if raw_page is not None:
+        try:
+            page_number = abs(int(raw_page))
+        except (TypeError, ValueError):
+            page_number = None
+
+    if raw_negative_page is not None:
+        try:
+            negative_page_number = -abs(int(raw_negative_page))
+        except (TypeError, ValueError):
+            negative_page_number = None
+
+    defaults = {
+        "melody": song_entry.get("melody", ""),
+        "author": "",
+        "content": content,
+        "category": category,
+        "order": None,
+        "page_number": page_number,
+        "negative_page_number": negative_page_number,
+    }
+
+    song, _ = Song.objects.update_or_create(
+        title=song_entry["title"],
+        category=category,
+        defaults=defaults,
+    )
 
 print("Songs successfully imported!")

@@ -13,6 +13,7 @@ interface SongDetail {
     categoryId: number | null;
     categoryName: string;
     page_number: number | null;
+    negative_page_number: number | null;
 }
 
 const hydrateSong = (songId: number, categories: CategoryWithSongs[] | null): SongDetail | null => {
@@ -29,6 +30,7 @@ const hydrateSong = (songId: number, categories: CategoryWithSongs[] | null): So
                 categoryId: category.id,
                 categoryName: category.name,
                 page_number: match.page_number ?? null,
+                negative_page_number: match.negative_page_number ?? null,
             };
         }
     }
@@ -106,6 +108,7 @@ const Song = () => {
                     categoryId: data.category ?? null,
                     categoryName: categories?.find((cat) => cat.id === data.category)?.name ?? "",
                     page_number: data.page_number ?? null,
+                    negative_page_number: data.negative_page_number ?? null,
                 };
 
                 setSong(hydrated);
@@ -156,6 +159,11 @@ const Song = () => {
         <div className="page-shell page-shell--centered song-page">
             <article className="song-container">
                 <header className="song-header">
+                    {song.page_number !== null && song.negative_page_number !== null && (
+                        <div className="song-page-number song-page-number--header" aria-hidden="true">
+                            {song.page_number}
+                        </div>
+                    )}
                     <h1>{song.title}</h1>
                     <div className="song-meta">
                         {song.author && <p><strong>Author:</strong> {song.author}</p>}
@@ -164,9 +172,14 @@ const Song = () => {
                 </header>
                 <h2>Lyrics</h2>
                 <div className="song-lyrics" dangerouslySetInnerHTML={{ __html: song.content || "" }} />
-                {song.page_number !== null && (
+                {song.page_number !== null && song.negative_page_number === null && (
                     <div className="song-page-number" aria-label="Songbook page number">
                         {song.page_number}
+                    </div>
+                )}
+                {song.negative_page_number !== null && (
+                    <div className="song-page-number song-page-number--negative" aria-label="Flipped songbook page number">
+                        {song.negative_page_number}
                     </div>
                 )}
             </article>

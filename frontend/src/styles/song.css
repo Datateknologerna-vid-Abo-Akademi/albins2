@@ -86,6 +86,19 @@
     letter-spacing: 0.08em;
 }
 
+.song-page-number--header {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    align-self: center;
+    text-align: center;
+    transform: rotate(180deg);
+    transform-origin: center;
+}
+
+.song-page-number--negative {
+    margin-top: auto;
+}
+
 @media (min-width: 768px) {
     .song-meta {
         flex-direction: row;

@@ -47,6 +47,9 @@ const SongCard = ({
             {song.page_number !== null && (
                 <p className="song-card__page">Page {song.page_number}</p>
             )}
+            {song.negative_page_number !== null && (
+                <p className="song-card__page">Flipped Page {song.negative_page_number}</p>
+            )}
         </div>
     );
 };

@@ -43,7 +43,8 @@ class Song(models.Model):
     content = CKEditor5Field(blank=True, null=True, verbose_name="Content")
     audio = models.FileField(upload_to="songs/audio/", blank=True, null=True, verbose_name="Audio")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="songs")
-    page_number = models.PositiveIntegerField(blank=True, null=True, verbose_name="Page number")
+    page_number = models.IntegerField(blank=True, null=True, verbose_name="Page number")
+    negative_page_number = models.IntegerField(blank=True, null=True, verbose_name="Negative page number")
     order = models.PositiveIntegerField(blank=True, null=True)
 
     class Meta:
@@ -52,6 +53,12 @@ class Song(models.Model):
         ordering = ["order", "id"]
 
     def save(self, *args, **kwargs):
+        if self.page_number is not None:
+            self.page_number = abs(self.page_number)
+
+        if self.negative_page_number is not None:
+            self.negative_page_number = -abs(self.negative_page_number)
+
         if self.order is None:
             last_order = Song.objects.filter(category=self.category).order_by("-order").first()
             self.order = (last_order.order + 10) if last_order else 10

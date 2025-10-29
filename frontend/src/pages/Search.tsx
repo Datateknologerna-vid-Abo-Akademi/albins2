@@ -50,6 +50,7 @@ const Search = () => {
                 categoryName: song.categoryName || "Unknown",
                 order: song.order,
                 page_number: song.page_number,
+                negative_page_number: song.negative_page_number,
                 content: song.content || "",
             }));
             setSongs(formattedSongs);
@@ -92,12 +93,22 @@ const Search = () => {
     // Re-filter songs when searchQuery changes
     useEffect(() => {
         setCurrentPage(1); // Reset page on new query
-        if (!searchQuery.trim()) {
-            setFilteredSongs(songs);
+        const trimmed = searchQuery.trim();
+        if (!trimmed) {
+            const sortedByPage = [...songs].sort((a, b) => {
+                const pageA = a.page_number ?? Number.MAX_SAFE_INTEGER;
+                const pageB = b.page_number ?? Number.MAX_SAFE_INTEGER;
+                if (pageA !== pageB) {
+                    return pageA - pageB;
+                }
+
+                return a.title.localeCompare(b.title);
+            });
+            setFilteredSongs(sortedByPage);
             return;
         }
 
-        const queryNorm = normalize(searchQuery);
+        const queryNorm = normalize(trimmed);
 
         // Ranking logic for sorting results
         const rankSong = (song: SearchSong): number | null => {
@@ -108,8 +119,19 @@ const Search = () => {
             const categoryNorm = normalize(song.categoryName);
             const contentNorm = normalize(song.content || "");
 
-            if (song.page_number !== null && song.page_number.toString() === searchQuery.trim()) {
-                return 0;
+            const trimmedQuery = searchQuery.trim();
+            if (trimmedQuery) {
+                const numericQuery = Number(trimmedQuery);
+                const isNumeric = Number.isFinite(numericQuery);
+                const matchesNumber = (value: number | null) => {
+                    if (value === null) return false;
+                    if (value.toString() === trimmedQuery) return true;
+                    return isNumeric && value === numericQuery;
+                };
+
+                if (matchesNumber(song.page_number) || matchesNumber(song.negative_page_number)) {
+                    return 0;
+                }
             }
 
             if (titleNorm.includes(queryNorm)) {
@@ -137,7 +159,19 @@ const Search = () => {
                 return rank !== null ? { ...song, rank } : null;
             })
             .filter((song): song is SearchSong & { rank: number } => song !== null)
-            .sort((a, b) => a.rank - b.rank);
+            .sort((a, b) => {
+                if (a.rank !== b.rank) {
+                    return a.rank - b.rank;
+                }
+
+                const pageA = a.page_number ?? Number.MAX_SAFE_INTEGER;
+                const pageB = b.page_number ?? Number.MAX_SAFE_INTEGER;
+                if (pageA !== pageB) {
+                    return pageA - pageB;
+                }
+
+                return a.title.localeCompare(b.title);
+            });
 
         setFilteredSongs(matchedSongs);
     }, [searchQuery, songs]);
