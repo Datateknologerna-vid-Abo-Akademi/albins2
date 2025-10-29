@@ -44,7 +44,7 @@ const Start = () => {
       <div className={hasAlbinFallen ? "start-container start-container--fallen" : "start-container"}>
           <Albin onFall={() => setHasAlbinFallen(true)} />
           <button onClick={handleClick} disabled={isAuthenticating}>
-              {isAuthenticating ? "Laddar…" : hasAlbinFallen ? "NEEJ! ALBIN!!" : "Skål!"}
+              {isAuthenticating ? "Laddar…" : hasAlbinFallen ? "NEEJ! ALBIN!! D:" : "Skål!"}
           </button>
       </div>
   );

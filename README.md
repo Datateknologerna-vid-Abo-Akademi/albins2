@@ -50,8 +50,9 @@ All helper aliases route to `docker compose` commands defined in `env.dev.sh` / 
 Make sure the Django test suite passes before opening a pull request.
 
 ## Environment
-- Sample configuration lives in `.env.dev` and `.env.prod`. Source `env.dev.sh` or `env.prod.sh` to export variables and load helper aliases.
-- Update `DJANGO_ALLOWED_HOSTS` as needed (e.g., add your LAN IP) and document any new environment variables in both templates.
+- Sample configuration lives in `.env.example`, which `env.dev.sh` now sources directly for development.
+- For production deployments, copy `.env.example` to `.env.prod`, fill in environment-specific values, and then source `env.prod.sh`.
+- Update `DJANGO_ALLOWED_HOSTS` as needed (e.g., add your LAN IP) and document any new environment variables in the template.
 
 ## Contribution Tips
 - Follow PEP 8 for Python and the repo’s ESLint/Prettier configuration for TypeScript.
