@@ -206,8 +206,8 @@ const Search = () => {
                 emptyMessage="No matching songs found."
                 onSelectSong={(songId) => navigate(`/song/${songId}`)}
                 getDetails={(song) => [
-                    { label: "Melody", value: song.melody || "Unknown" },
-                    { label: "Category", value: song.categoryName || "Unknown" },
+                    { label: "Mel", value: song.melody || "Unknown" },
+                    { label: null, value: song.categoryName || "Unknown" },
                 ]}
             />
             {filteredSongs.length > 0 && (
