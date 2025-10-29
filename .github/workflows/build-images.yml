@@ -169,3 +169,22 @@ jobs:
       - name: Skip build
         if: steps.changes.outputs.changed != 'true'
         run: echo "Skipping build for ${{ matrix.service }}; no changes detected."
+
+  prune-packages:
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        service:
+          - backend
+          - frontend
+    steps:
+      - name: Delete old ${{ matrix.service }} images
+        uses: actions/delete-package-versions@v4
+        with:
+          owner: ${{ github.repository_owner }}
+          package-type: container
+          package-name: ${{ github.repository }}/${{ matrix.service }}
+          min-versions-to-keep: 5
+          delete-only-untagged-versions: false
