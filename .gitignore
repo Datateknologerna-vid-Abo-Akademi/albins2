@@ -1,4 +1,5 @@
 albins-data.json
 *.idea*
-backend/static/
 .env
+songs.json
+backend/static/

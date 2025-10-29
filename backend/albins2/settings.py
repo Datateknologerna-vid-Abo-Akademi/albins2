@@ -29,6 +29,11 @@ DEBUG = True
 raw_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 ALLOWED_HOSTS = [host.strip() for host in raw_hosts.split(",") if host.strip()]
 
+raw_csrf_trusted_origins = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in raw_csrf_trusted_origins.split(",") if origin.strip()
+]
+
 SERVICE_ACCOUNT_USERNAME = os.getenv("SERVICE_ACCOUNT_USERNAME", "albins_service")
 SERVICE_ACCOUNT_EMAIL = os.getenv("SERVICE_ACCOUNT_EMAIL", "")
 
