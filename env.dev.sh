@@ -8,8 +8,15 @@ fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+ENV_FILE="${ROOT_DIR}/.env.example"
+
+if [[ ! -f "${ENV_FILE}" ]]; then
+  echo "Missing .env.example. Copy the template into place before sourcing env.dev.sh."
+  return 1
+fi
+
 set -a
-source "${ROOT_DIR}/.env.dev"
+source "${ENV_FILE}"
 set +a
 
 alias alb='docker compose -f docker-compose.dev.yml'
