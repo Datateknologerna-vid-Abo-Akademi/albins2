@@ -43,6 +43,7 @@ class Song(models.Model):
     content = CKEditor5Field(blank=True, null=True, verbose_name="Content")
     audio = models.FileField(upload_to="songs/audio/", blank=True, null=True, verbose_name="Audio")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="songs")
+    page_number = models.PositiveIntegerField(blank=True, null=True, verbose_name="Page number")
     order = models.PositiveIntegerField(blank=True, null=True)
 
     class Meta:

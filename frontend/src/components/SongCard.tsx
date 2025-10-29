@@ -44,6 +44,9 @@ const SongCard = ({
                     <strong>{detail.label}:</strong> {detail.value}
                 </p>
             ))}
+            {song.page_number !== null && (
+                <p className="song-card__page">Page {song.page_number}</p>
+            )}
         </div>
     );
 };
