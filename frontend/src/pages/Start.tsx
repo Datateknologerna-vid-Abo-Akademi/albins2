@@ -7,6 +7,7 @@ import { clearCategoryCache, fetchCategories } from "../services/categoryClient"
 const Start = () => {
   const navigate = useNavigate();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [hasAlbinFallen, setHasAlbinFallen] = useState(false);
 
   const handleClick = async () => {
     try {
@@ -40,10 +41,10 @@ const Start = () => {
   };
 
   return (
-      <div className="start-container">
-          <Albin />
+      <div className={hasAlbinFallen ? "start-container start-container--fallen" : "start-container"}>
+          <Albin onFall={() => setHasAlbinFallen(true)} />
           <button onClick={handleClick} disabled={isAuthenticating}>
-              {isAuthenticating ? "Laddar…" : "Skål!"}
+              {isAuthenticating ? "Laddar…" : hasAlbinFallen ? "NEEJ! ALBIN!!" : "Skål!"}
           </button>
       </div>
   );
