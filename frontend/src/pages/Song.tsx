@@ -170,7 +170,6 @@ const Song = () => {
                         <p><strong>Mel:</strong> {song.melody || "Unknown"}</p>
                     </div>
                 </header>
-                <h2>Lyrics</h2>
                 <div className="song-lyrics" dangerouslySetInnerHTML={{ __html: song.content || "" }} />
                 {song.page_number !== null && song.negative_page_number === null && (
                     <div className="song-page-number" aria-label="Songbook page number">
