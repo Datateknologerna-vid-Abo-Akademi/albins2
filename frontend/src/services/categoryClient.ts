@@ -27,14 +27,21 @@ export interface CategoryWithSongs {
 
 const sortSongs = (songs: SongSummary[] = []): SongSummary[] => {
   return [...songs].sort((a, b) => {
+    const pageA = a.page_number ?? Number.MAX_SAFE_INTEGER;
+    const pageB = b.page_number ?? Number.MAX_SAFE_INTEGER;
+
+    if (pageA !== pageB) {
+      return pageA - pageB;
+    }
+
     const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
     const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
 
-    if (orderA === orderB) {
-      return a.title.localeCompare(b.title);
+    if (orderA !== orderB) {
+      return orderA - orderB;
     }
 
-    return orderA - orderB;
+    return a.title.localeCompare(b.title);
   });
 };
 
