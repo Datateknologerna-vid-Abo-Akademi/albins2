@@ -21,8 +21,9 @@ const Albin = ({ onFall }: AlbinProps) => {
     const flipCountRef = useRef(0);
 
     useEffect(() => {
+        const tracker = clickTrackerRef.current;
         return () => {
-            const { timeoutId } = clickTrackerRef.current;
+            const { timeoutId } = tracker;
             if (timeoutId) {
                 window.clearTimeout(timeoutId);
             }
