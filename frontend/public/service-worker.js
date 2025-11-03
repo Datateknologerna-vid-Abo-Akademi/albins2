@@ -5,6 +5,8 @@ const ADMIN_PATH_PREFIXES = ['/admin', '/api/admin'];
 const SONGBOOK_API_PATH = '/api/songbook/';
 const SHELL_PATH = '/index.html';
 const OFFLINE_FALLBACK = '/offline.html';
+const OFFLINE_SONGBOOK_ID = 0;
+const OFFLINE_SONGBOOK_NAME = '';
 
 const STATIC_ASSETS = [
   '/',
@@ -146,7 +148,7 @@ async function handleSongbookRequest(request) {
     return cached;
   }
 
-  return new Response(JSON.stringify({ id: 0, name: '', categories: [] }), {
+  return new Response(JSON.stringify({ id: OFFLINE_SONGBOOK_ID, name: OFFLINE_SONGBOOK_NAME, categories: [] }), {
     headers: { 'Content-Type': 'application/json' },
     status: 503,
     statusText: 'Service Unavailable',
