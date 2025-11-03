@@ -87,9 +87,12 @@ export const fetchCategories = async (token: string): Promise<CategoryWithSongs[
     throw new Error('Failed to fetch songbook');
   }
 
-  const payload = (await response.json()) as SongBook;
-  const categories = payload?.categories ?? [];
-  const sorted = sortCategories(categories);
+  const payload = (await response.json()) as unknown;
+  if (!isSongBook(payload)) {
+    throw new Error('Invalid songbook response');
+  }
+
+  const sorted = sortCategories(payload.categories);
   setCache(CACHE_KEYS.categories, sorted);
   return sorted;
 };
@@ -114,4 +117,17 @@ export const getAllSongsFromCategories = (): SongWithCategory[] | null => {
   });
 
   return songs;
+};
+
+const isSongBook = (payload: unknown): payload is SongBook => {
+  if (!payload || typeof payload !== 'object') {
+    return false;
+  }
+
+  const candidate = payload as Partial<SongBook>;
+  return (
+    typeof candidate.id === 'number' &&
+    typeof candidate.name === 'string' &&
+    Array.isArray(candidate.categories)
+  );
 };

@@ -146,7 +146,7 @@ async function handleSongbookRequest(request) {
     return cached;
   }
 
-  return new Response(JSON.stringify({ categories: [] }), {
+  return new Response(JSON.stringify({ id: 0, name: '', categories: [] }), {
     headers: { 'Content-Type': 'application/json' },
     status: 503,
     statusText: 'Service Unavailable',
