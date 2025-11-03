@@ -25,6 +25,12 @@ export interface CategoryWithSongs {
   songs: SongSummary[];
 }
 
+export interface SongBook {
+  id: number;
+  name: string;
+  categories: CategoryWithSongs[];
+}
+
 const sortSongs = (songs: SongSummary[] = []): SongSummary[] => {
   return [...songs].sort((a, b) => {
     const pageA = a.page_number ?? Number.MAX_SAFE_INTEGER;
@@ -69,7 +75,7 @@ export const getCachedCategories = (): CategoryWithSongs[] | null => {
 };
 
 export const fetchCategories = async (token: string): Promise<CategoryWithSongs[]> => {
-  const response = await fetch('/api/categories/', {
+  const response = await fetch('/api/songbook/', {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -78,11 +84,12 @@ export const fetchCategories = async (token: string): Promise<CategoryWithSongs[
   });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch categories');
+    throw new Error('Failed to fetch songbook');
   }
 
-  const data = (await response.json()) as CategoryWithSongs[];
-  const sorted = sortCategories(data);
+  const payload = (await response.json()) as SongBook;
+  const categories = payload?.categories ?? [];
+  const sorted = sortCategories(categories);
   setCache(CACHE_KEYS.categories, sorted);
   return sorted;
 };

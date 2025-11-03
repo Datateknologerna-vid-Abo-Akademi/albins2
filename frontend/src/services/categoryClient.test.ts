@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import {
     CategoryWithSongs,
+    SongBook,
     fetchCategories,
     getAllSongsFromCategories,
     getCachedCategories,
@@ -170,9 +171,14 @@ describe("getCachedCategories", () => {
 describe("fetchCategories", () => {
     it("requests sorted categories from the API and caches the response", async () => {
         const fixture = buildCategoriesFixture();
+        const responsePayload: SongBook = {
+            id: 42,
+            name: "Test Songbook",
+            categories: fixture,
+        };
         const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
-            json: async () => fixture,
+            json: async () => responsePayload,
         } as Response);
         const originalFetch = globalThis.fetch;
         // Vitest runs in jsdom which exposes fetch globally; temporarily replace it.
@@ -182,7 +188,7 @@ describe("fetchCategories", () => {
         try {
             const result = await fetchCategories("secret-token");
 
-            expect(fetchMock).toHaveBeenCalledWith("/api/categories/", {
+            expect(fetchMock).toHaveBeenCalledWith("/api/songbook/", {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",

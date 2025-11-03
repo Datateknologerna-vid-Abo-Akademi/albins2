@@ -2,6 +2,7 @@ const STATIC_CACHE = 'albins2-static-v2';
 const RUNTIME_CACHE = 'albins2-runtime-v2';
 const RUNTIME_CACHE_LIMIT = 20;
 const ADMIN_PATH_PREFIXES = ['/admin', '/api/admin'];
+const SONGBOOK_API_PATH = '/api/songbook/';
 const SHELL_PATH = '/index.html';
 const OFFLINE_FALLBACK = '/offline.html';
 
@@ -72,7 +73,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Bypass API and other non-asset requests so the backend remains the source of truth.
+  if (requestUrl.pathname === SONGBOOK_API_PATH) {
+    event.respondWith(handleSongbookRequest(request));
+    return;
+  }
+
+  // Bypass other API and non-asset requests so the backend remains the source of truth.
 });
 
 async function handleNavigationRequest(event) {
@@ -120,13 +126,40 @@ async function handleAssetRequest(request) {
   }
 }
 
+async function handleSongbookRequest(request) {
+  const cache = await caches.open(RUNTIME_CACHE);
+
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse && networkResponse.ok) {
+      await cache.put(request, networkResponse.clone());
+      await trimCache(cache);
+      return networkResponse;
+    }
+  } catch {
+    // Swallow network errors so we can fall back to cache.
+  }
+
+  const cached = await cache.match(request);
+  if (cached) {
+    return cached;
+  }
+
+  return new Response(JSON.stringify({ categories: [] }), {
+    headers: { 'Content-Type': 'application/json' },
+    status: 503,
+    statusText: 'Service Unavailable',
+  });
+}
+
 async function cacheRuntimeResponse(request, response) {
   if (!response || !response.ok) {
     return;
   }
 
+  const responseClone = response.clone();
   const cache = await caches.open(RUNTIME_CACHE);
-  await cache.put(request, response.clone());
+  await cache.put(request, responseClone);
   await trimCache(cache);
 }
 
@@ -135,8 +168,9 @@ async function cacheStaticAsset(request, response) {
     return;
   }
 
+  const responseClone = response.clone();
   const cache = await caches.open(STATIC_CACHE);
-  await cache.put(request, response.clone());
+  await cache.put(request, responseClone);
 }
 
 async function trimCache(cache, limit = RUNTIME_CACHE_LIMIT) {
