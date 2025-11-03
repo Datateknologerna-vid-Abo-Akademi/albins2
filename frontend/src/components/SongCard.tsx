@@ -1,4 +1,4 @@
-import { SongSummary } from "../services/categoryClient";
+import type { SongSummary } from "../services/categoryClient";
 
 export type SongDetail = {
     label: string | null;

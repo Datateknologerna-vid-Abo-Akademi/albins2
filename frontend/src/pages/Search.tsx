@@ -5,7 +5,8 @@ import PaginationControls from "../components/PaginationControls";
 import SongList from "../components/SongList";
 import SongSearchInput from "../components/SongSearchInput";
 import "../styles/Search.css";
-import { SongWithCategory, fetchCategories, getAllSongsFromCategories } from "../services/categoryClient";
+import { fetchCategories, getAllSongsFromCategories } from "../services/categoryClient";
+import type { SongWithCategory } from "../services/categoryClient";
 
 type SearchSong = SongWithCategory & {
     author: string;

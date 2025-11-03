@@ -1,4 +1,5 @@
-import { AnimationEvent, useEffect, useRef, useState } from "react";
+import type { AnimationEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import note from "../assets/note.svg";
 import albin from "../assets/Albin.svg";
 
@@ -103,20 +104,27 @@ const Albin = ({ onFall }: AlbinProps) => {
             <div className="albin__notes" aria-hidden="true">
                 {notes}
             </div>
-            <img
-                src={albin}
-                className={
-                    isFalling
-                        ? "albin__logo albin__logo--fall"
-                        : isFlipping
-                        ? "albin__logo albin__logo--flip"
-                        : "albin__logo"
-                }
-                alt="Albins logotype"
-                loading="eager"
+            <button
+                type="button"
+                className="albin__logo-button"
                 onClick={handleLogoClick}
-                onAnimationEnd={handleLogoAnimationEnd}
-            />
+                disabled={isFalling}
+                aria-label="Trigger the Albin animation"
+            >
+                <img
+                    src={albin}
+                    className={
+                        isFalling
+                            ? "albin__logo albin__logo--fall"
+                            : isFlipping
+                            ? "albin__logo albin__logo--flip"
+                            : "albin__logo"
+                    }
+                    alt="Albins logotype"
+                    loading="eager"
+                    onAnimationEnd={handleLogoAnimationEnd}
+                />
+            </button>
         </div>
     );
 };
