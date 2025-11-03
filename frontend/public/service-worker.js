@@ -150,8 +150,8 @@ async function handleSongbookRequest(request) {
 
   return new Response(JSON.stringify({ id: OFFLINE_SONGBOOK_ID, name: OFFLINE_SONGBOOK_NAME, categories: [] }), {
     headers: { 'Content-Type': 'application/json' },
-    status: 503,
-    statusText: 'Service Unavailable',
+    status: 200,
+    statusText: 'OK',
   });
 }
 
