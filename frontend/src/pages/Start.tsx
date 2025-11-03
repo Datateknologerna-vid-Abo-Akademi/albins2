@@ -95,7 +95,7 @@ const Start = () => {
         navigate("/categories");
       }
 
-      if (typeof navigator === "undefined" || navigator.onLine) {
+      if (typeof navigator !== "undefined" && navigator.onLine) {
         clearCategoryCache();
       }
 
