@@ -62,62 +62,41 @@ const Song = () => {
 
         let cancelled = false;
 
+        const updateFromCategories = (categoriesData: CategoryWithSongs[] | null, finalAttempt: boolean) => {
+            if (!categoriesData) {
+                return false;
+            }
+
+            const hydrated = hydrateSong(songId, categoriesData);
+            if (hydrated) {
+                setSong(hydrated);
+                setError(null);
+                return true;
+            }
+
+            if (finalAttempt) {
+                setSong(null);
+                setError("No song found.");
+            }
+
+            return false;
+        };
+
         const cachedCategories = getCachedCategories();
-        const cachedSong = hydrateSong(songId, cachedCategories);
-        if (cachedSong) {
-            setSong(cachedSong);
-            setIsLoading(false);
-            setError(null);
-        } else {
-            setIsLoading(true);
-        }
+        const hasCachedSong = updateFromCategories(cachedCategories, false);
+        setIsLoading(!hasCachedSong);
 
         (async () => {
             try {
-                const response = await fetch(`/api/songs/${songId}/`, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Token ${auth.token}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch song ${songId}`);
-                }
-
-                const data = await response.json();
+                const categories = await fetchCategories(auth.token);
                 if (cancelled) return;
 
-                let categories = cachedCategories;
-                if (!categories) {
-                    try {
-                        categories = await fetchCategories(auth.token);
-                    } catch (catErr) {
-                        console.warn("Unable to refresh category cache:", catErr);
-                    }
-                }
-
-                if (cancelled) return;
-
-                const hydrated = hydrateSong(songId, categories) ?? {
-                    id: data.id,
-                    title: data.title,
-                    author: data.author ?? null,
-                    melody: data.melody ?? null,
-                    content: data.content ?? null,
-                    categoryId: data.category ?? null,
-                    categoryName: categories?.find((cat) => cat.id === data.category)?.name ?? "",
-                    page_number: data.page_number ?? null,
-                    negative_page_number: data.negative_page_number ?? null,
-                };
-
-                setSong(hydrated);
+                updateFromCategories(categories, true);
                 setIsLoading(false);
-                setError(null);
             } catch (err) {
-                console.error("Fetching song failed:", err);
-                if (!cachedSong) {
+                console.error("Fetching categories failed:", err);
+                if (cancelled) return;
+                if (!hasCachedSong) {
                     setError("Failed to load song.");
                     setIsLoading(false);
                 }

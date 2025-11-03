@@ -1,12 +1,12 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .viewsets import SongViewSet, CategoryViewSet, SongBookViewSet
+from .viewsets import SongViewSet
+from .views import SongBookDetailView
 
 router = DefaultRouter()
 router.register(r"songs", SongViewSet, basename="songs")
-router.register(r"categories", CategoryViewSet, basename="categories")
-router.register(r"songbooks", SongBookViewSet, basename="songbooks")
 
 urlpatterns = [
+    path("songbook/", SongBookDetailView.as_view(), name="songbook-detail"),
     path("", include(router.urls)),
 ]

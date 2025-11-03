@@ -89,7 +89,7 @@ class SongModelTests(TestCase):
         self.assertEqual(song.negative_page_number, -9)
 
 
-class SongBookViewSetTests(APITestCase):
+class SongBookAPITests(APITestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="test-user", password="password123")
         self.songbook = SongBook.objects.create(name="Seasonal Favorites")
@@ -100,28 +100,32 @@ class SongBookViewSetTests(APITestCase):
         self.beta_song = Song.objects.create(title="Beta Song", category=self.first_category, order=30)
         self.gamma_song = Song.objects.create(title="Gamma Song", category=self.second_category, order=20)
 
-    def test_requires_authentication(self):
-        url = reverse("songbooks-list")
+    def test_songbook_endpoint_requires_authentication(self):
+        url = reverse("songbook-detail")
         response = self.client.get(url)
-
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_returns_nested_categories_and_songs_in_order(self):
+    def test_songbook_endpoint_returns_single_songbook_payload(self):
         self.client.force_authenticate(user=self.user)
-        url = reverse("songbooks-list")
+        url = reverse("songbook-detail")
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data["id"], self.songbook.id)
+        self.assertEqual(response.data["name"], self.songbook.name)
+        categories = response.data["categories"]
+        self.assertEqual(len(categories), 2)
+        self.assertEqual([category["name"] for category in categories], ["Advent", "Easter"])
+        self.assertEqual([song["title"] for song in categories[0]["songs"]], ["Alpha Song", "Beta Song"])
 
-        categories = response.data[0]["categories"]
-        self.assertEqual([category["order"] for category in categories], [10, 30])
+    def test_songbook_endpoint_returns_error_if_multiple_songbooks_exist(self):
+        SongBook.objects.create(name="Extra Book")
+        self.client.force_authenticate(user=self.user)
+        url = reverse("songbook-detail")
+        response = self.client.get(url)
 
-        first_category = categories[0]
-        self.assertEqual(first_category["name"], self.first_category.name)
-        song_orders = [song["order"] for song in first_category["songs"]]
-        self.assertEqual(song_orders, [10, 30])
-        self.assertEqual(first_category["songs"][0]["category_name"], self.first_category.name)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("Multiple songbooks", response.data["detail"])
 
 
 class SongViewSetTests(APITestCase):
