@@ -119,6 +119,40 @@ export const getAllSongsFromCategories = (): SongWithCategory[] | null => {
   return songs;
 };
 
+const isSongSummary = (song: unknown): song is SongSummary => {
+  if (!song || typeof song !== 'object') {
+    return false;
+  }
+
+  const candidate = song as Partial<SongSummary>;
+  return (
+    typeof candidate.id === 'number' &&
+    typeof candidate.title === 'string' &&
+    (candidate.author === null || typeof candidate.author === 'string') &&
+    (candidate.melody === null || typeof candidate.melody === 'string') &&
+    (candidate.order === null || typeof candidate.order === 'number') &&
+    (candidate.page_number === null || typeof candidate.page_number === 'number') &&
+    (candidate.negative_page_number === null || typeof candidate.negative_page_number === 'number') &&
+    (candidate.content === null || typeof candidate.content === 'string') &&
+    typeof candidate.category === 'number'
+  );
+};
+
+const isCategoryWithSongs = (category: unknown): category is CategoryWithSongs => {
+  if (!category || typeof category !== 'object') {
+    return false;
+  }
+
+  const candidate = category as Partial<CategoryWithSongs>;
+  return (
+    typeof candidate.id === 'number' &&
+    typeof candidate.name === 'string' &&
+    (candidate.order === null || typeof candidate.order === 'number') &&
+    Array.isArray(candidate.songs) &&
+    candidate.songs.every(isSongSummary)
+  );
+};
+
 const isSongBook = (payload: unknown): payload is SongBook => {
   if (!payload || typeof payload !== 'object') {
     return false;
@@ -128,6 +162,7 @@ const isSongBook = (payload: unknown): payload is SongBook => {
   return (
     typeof candidate.id === 'number' &&
     typeof candidate.name === 'string' &&
-    Array.isArray(candidate.categories)
+    Array.isArray(candidate.categories) &&
+    candidate.categories.every(isCategoryWithSongs)
   );
 };
