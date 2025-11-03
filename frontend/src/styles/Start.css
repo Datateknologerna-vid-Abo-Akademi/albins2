@@ -61,7 +61,6 @@
     display: inline-flex;
 }
 
-.albin__logo-button:focus-visible,
 .albin__logo-button:focus {
     outline: none;
 }
