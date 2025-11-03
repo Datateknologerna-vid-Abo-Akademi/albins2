@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Start.css";
 import Albin from "../components/Albin.tsx";
@@ -8,14 +8,6 @@ const Start = () => {
   const navigate = useNavigate();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [hasAlbinFallen, setHasAlbinFallen] = useState(false);
-
-  const isMountedRef = useRef(true);
-
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
 
   const handleClick = async () => {
     try {
@@ -34,22 +26,18 @@ const Start = () => {
       window.localStorage.setItem('auth', JSON.stringify(auth));
       clearCategoryCache();
 
-      void (async () => {
-        try {
-          await fetchCategories(auth.token);
-        } catch (prefetchErr) {
-          console.warn("Prefetching categories failed:", prefetchErr);
-        }
-      })();
+      try {
+        await fetchCategories(auth.token);
+      } catch (prefetchErr) {
+        console.warn("Prefetching categories failed:", prefetchErr);
+      }
 
       // Redirect to categories page
       navigate("/categories");
     } catch (error) {
       console.error("Login error:", error);
     } finally {
-      if (isMountedRef.current) {
-        setIsAuthenticating(false);
-      }
+      setIsAuthenticating(false);
     }
   };
 

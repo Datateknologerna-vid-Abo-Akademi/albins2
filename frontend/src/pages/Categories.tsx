@@ -70,7 +70,7 @@ const Categories = () => {
     }, [navigate]);
 
     const showSkeletons = isLoading && categories.length === 0;
-    const skeletonCount = Math.max(categories.length || 0, 6);
+    const skeletonCount = Math.max(categories.length, 6);
 
     return (
         <div className="page-shell categories-container">
