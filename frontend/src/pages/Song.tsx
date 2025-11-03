@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Footer from "../components/Footer";
 import "../styles/song.css";
-import { CategoryWithSongs, fetchCategories, getCachedCategories } from "../services/categoryClient";
+import { fetchCategories, getCachedCategories } from "../services/categoryClient";
+import type { CategoryWithSongs } from "../services/categoryClient";
 
 interface SongDetail {
     id: number;

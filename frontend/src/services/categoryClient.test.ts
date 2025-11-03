@@ -1,10 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import {
-    CategoryWithSongs,
-    fetchCategories,
-    getAllSongsFromCategories,
-    getCachedCategories,
-} from "./categoryClient";
+import { fetchCategories, getAllSongsFromCategories, getCachedCategories } from "./categoryClient";
+import type { CategoryWithSongs } from "./categoryClient";
 import { CACHE_KEYS, clearCache, setCache } from "../utils/cache";
 
 const cacheKey = `albins:${CACHE_KEYS.categories}`;
