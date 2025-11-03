@@ -1,4 +1,4 @@
-import React from "react";
+import type { ChangeEvent, FormEvent } from "react";
 
 interface Song {
     title: string;
@@ -18,7 +18,7 @@ interface SongBook {
     [key: string]: SongCategory;
 }
 
-export type { Song, SongCategory, SongBook};
+export type { Song, SongCategory, SongBook };
 export type OnSearchType = (query: string) => void;
-export type HandleChangeType = (event: React.ChangeEvent<HTMLInputElement>) => void;
-export type HandleSubmitType = (event: React.FormEvent<HTMLFormElement>) => void;
+export type HandleChangeType = (event: ChangeEvent<HTMLInputElement>) => void;
+export type HandleSubmitType = (event: FormEvent<HTMLFormElement>) => void;

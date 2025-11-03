@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import Footer from "../components/Footer";
 import SongList from "../components/SongList";
 import "../styles/Songs.css";
-import { CategoryWithSongs, SongSummary, fetchCategories, getCachedCategories } from "../services/categoryClient";
+import { fetchCategories, getCachedCategories } from "../services/categoryClient";
+import type { CategoryWithSongs, SongSummary } from "../services/categoryClient";
 
 const Songs = () => {
     const [songs, setSongs] = useState<SongSummary[]>([]);

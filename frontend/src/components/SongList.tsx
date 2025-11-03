@@ -1,5 +1,5 @@
-import SongCard, { SongDetail } from "./SongCard";
-import { SongSummary } from "../services/categoryClient";
+import SongCard, { type SongDetail } from "./SongCard";
+import type { SongSummary } from "../services/categoryClient";
 
 type SongListProps<T extends SongSummary = SongSummary> = {
     songs: T[];

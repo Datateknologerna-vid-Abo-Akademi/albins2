@@ -4,7 +4,8 @@ import Footer from "../components/Footer";
 import CategoryCard from "../components/CategoryCard";
 import "../styles/Categories.css";
 import "../styles/Footer.css";
-import { CategoryWithSongs, fetchCategories, getCachedCategories } from "../services/categoryClient";
+import { fetchCategories, getCachedCategories } from "../services/categoryClient";
+import type { CategoryWithSongs } from "../services/categoryClient";
 
 interface CategoryItem {
     id: number;

@@ -1,19 +1,20 @@
-import React, { useState } from "react";
-import { OnSearchType } from "../pages/types";
+import type { ChangeEvent, FC, FormEvent } from "react";
+import { useState } from "react";
+import type { OnSearchType } from "../pages/types";
 import "../styles/Footer.css";
 
 interface SearchBarProps {
     onSearch: OnSearchType;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
+const SearchBar: FC<SearchBarProps> = ({ onSearch }) => {
     const [query, setQuery] = useState("");
 
-    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
         setQuery(event.target.value);
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         onSearch(query);
     };
