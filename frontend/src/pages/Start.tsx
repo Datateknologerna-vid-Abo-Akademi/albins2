@@ -25,6 +25,7 @@ const Start = () => {
       const auth = { token: data.token, expiry };
       window.localStorage.setItem('auth', JSON.stringify(auth));
       clearCategoryCache();
+
       try {
         await fetchCategories(auth.token);
       } catch (prefetchErr) {
