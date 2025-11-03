@@ -69,12 +69,26 @@ const Categories = () => {
         };
     }, [navigate]);
 
+    const showSkeletons = isLoading && categories.length === 0;
+    const skeletonCount = Math.max(categories.length || 0, 6);
+
     return (
         <div className="page-shell categories-container">
             <h1 className="page-heading">Categories</h1>
             <div className="categories-grid card-grid">
-                {isLoading && categories.length === 0 ? (
-                    <p className="empty-state">Loading categories…</p>
+                {showSkeletons ? (
+                    <>
+                        <span className="sr-only" role="status" aria-live="polite">Loading categories…</span>
+                        {Array.from({ length: skeletonCount }).map((_, index) => (
+                            <div
+                                key={`category-skeleton-${index}`}
+                                className="category-card card card--center category-card--skeleton"
+                                aria-hidden="true"
+                            >
+                                <div className="category-card__skeleton-bar" />
+                            </div>
+                        ))}
+                    </>
                 ) : error && categories.length === 0 ? (
                     <p className="empty-state">{error}</p>
                 ) : categories.length > 0 ? (
