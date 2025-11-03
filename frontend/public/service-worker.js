@@ -79,6 +79,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Bypass other API and non-asset requests so the backend remains the source of truth.
+
 });
 
 async function handleNavigationRequest(event) {
