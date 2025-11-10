@@ -525,7 +525,7 @@ const Song = () => {
                     {[prevSongBuffer, nextSongBuffer].map((bufferSong) =>
                         bufferSong ? (
                             <article key={`preload-${bufferSong.id}`}>
-                                {renderSongBody(bufferSong, "peek")}
+                                {renderSongBody(bufferSong, "active")}
                             </article>
                         ) : null,
                     )}
