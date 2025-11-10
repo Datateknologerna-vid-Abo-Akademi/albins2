@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type TouchEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Footer from "../components/Footer";
 import "../styles/song.css";
 import { fetchCategories, getCachedCategories } from "../services/categoryClient";
-import type { CategoryWithSongs } from "../services/categoryClient";
+import type { CategoryWithSongs, SongSummary } from "../services/categoryClient";
 
 interface SongDetail {
     id: number;
@@ -17,25 +17,86 @@ interface SongDetail {
     negative_page_number: number | null;
 }
 
-const hydrateSong = (songId: number, categories: CategoryWithSongs[] | null): SongDetail | null => {
-    if (!categories) return null;
-    for (const category of categories) {
-        const match = category.songs?.find((song) => song.id === songId);
-        if (match) {
-            return {
-                id: match.id,
-                title: match.title,
-                author: match.author,
-                melody: match.melody,
-                content: match.content,
-                categoryId: category.id,
-                categoryName: category.name,
-                page_number: match.page_number ?? null,
-                negative_page_number: match.negative_page_number ?? null,
-            };
-        }
+type OrderedSongDetail = SongDetail & {
+    categoryOrder: number;
+    categoryPosition: number;
+    songPosition: number;
+    songOrder: number;
+};
+
+const normalisedValue = (value: number | null | undefined): number => value ?? Number.MAX_SAFE_INTEGER;
+
+const toSongDetail = (song: SongSummary, category: CategoryWithSongs): SongDetail => ({
+    id: song.id,
+    title: song.title,
+    author: song.author,
+    melody: song.melody,
+    content: song.content,
+    categoryId: category.id,
+    categoryName: category.name,
+    page_number: song.page_number ?? null,
+    negative_page_number: song.negative_page_number ?? null,
+});
+
+const buildOrderedSongDetails = (categories: CategoryWithSongs[] | null): OrderedSongDetail[] => {
+    if (!categories) {
+        return [];
     }
-    return null;
+
+    const ordered: OrderedSongDetail[] = [];
+    categories.forEach((category, categoryPosition) => {
+        const categoryOrder = normalisedValue(category.order);
+        category.songs?.forEach((song, songPosition) => {
+            ordered.push({
+                ...toSongDetail(song, category),
+                categoryOrder,
+                categoryPosition,
+                songPosition,
+                songOrder: normalisedValue(song.order),
+            });
+        });
+    });
+
+    const usePageOrder = ordered.some((song) => song.page_number !== null);
+
+    return ordered.sort((a, b) => {
+        if (usePageOrder) {
+            const pageComparison = normalisedValue(a.page_number) - normalisedValue(b.page_number);
+            if (pageComparison !== 0) {
+                return pageComparison;
+            }
+        }
+
+        if (a.categoryOrder !== b.categoryOrder) {
+            return a.categoryOrder - b.categoryOrder;
+        }
+
+        if (a.categoryPosition !== b.categoryPosition) {
+            return a.categoryPosition - b.categoryPosition;
+        }
+
+        if (a.songOrder !== b.songOrder) {
+            return a.songOrder - b.songOrder;
+        }
+
+        if (a.songPosition !== b.songPosition) {
+            return a.songPosition - b.songPosition;
+        }
+
+        return a.title.localeCompare(b.title);
+    });
+};
+
+const getSongWindow = (ordered: OrderedSongDetail[], centerIndex: number, radius: number): {
+    songs: OrderedSongDetail[];
+    startIndex: number;
+} => {
+    const start = Math.max(centerIndex - radius, 0);
+    const end = Math.min(centerIndex + radius + 1, ordered.length);
+    return {
+        songs: ordered.slice(start, end),
+        startIndex: start,
+    };
 };
 
 const Song = () => {
@@ -44,6 +105,32 @@ const Song = () => {
     const [song, setSong] = useState<SongDetail | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [nextSong, setNextSong] = useState<SongDetail | null>(null);
+    const [prevSong, setPrevSong] = useState<SongDetail | null>(null);
+    const [swipeOffset, setSwipeOffset] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isAdvancing, setIsAdvancing] = useState(false);
+    const [isTransitionLocked, setIsTransitionLocked] = useState(false);
+    const stackRef = useRef<HTMLDivElement | null>(null);
+    const [stackWidth, setStackWidth] = useState(360);
+    const swipeStartRef = useRef<number | null>(null);
+    const swipeStartYRef = useRef<number | null>(null);
+    const swipeDeltaRef = useRef(0);
+    const advanceTimeoutRef = useRef<number | null>(null);
+    const transitionUnlockFrameRef = useRef<number | null>(null);
+    const isVerticalScrollRef = useRef(false);
+    const WINDOW_RADIUS = 2;
+    const [prevSongBuffer, setPrevSongBuffer] = useState<SongDetail | null>(null);
+    const [nextSongBuffer, setNextSongBuffer] = useState<SongDetail | null>(null);
+    const PEEK_PERCENT = 12;
+    const idlePercent = 100 - PEEK_PERCENT;
+    const PEEK_EDGE_PERCENT = 5;
+    const PEEK_PARALLAX_FACTOR = 0.12;
+    const PEEK_SCALE = 0.96;
+    const travelDistance = Math.max(stackWidth * (idlePercent / 100), 160);
+    const MAX_SWIPE_OFFSET = travelDistance;
+    const RESISTANCE_FACTOR = travelDistance * 1.1;
+    const SWIPE_THRESHOLD = Math.min(120, travelDistance * 0.3);
 
     useEffect(() => {
         const songId = Number(id);
@@ -67,16 +154,27 @@ const Song = () => {
                 return false;
             }
 
-            const hydrated = hydrateSong(songId, categoriesData);
-            if (hydrated) {
-                setSong(hydrated);
+            const ordered = buildOrderedSongDetails(categoriesData);
+            const centerIndex = ordered.findIndex((item) => item.id === songId);
+            if (centerIndex !== -1) {
+                const centerSong = ordered[centerIndex];
+                setSong(centerSong);
                 setError(null);
+                setNextSong(ordered[centerIndex + 1] ?? null);
+                setPrevSong(ordered[centerIndex - 1] ?? null);
+                const window = getSongWindow(ordered, centerIndex, WINDOW_RADIUS);
+                setPrevSongBuffer(ordered[centerIndex - 2] ?? window.songs[0] ?? null);
+                setNextSongBuffer(ordered[centerIndex + 2] ?? window.songs[window.songs.length - 1] ?? null);
                 return true;
             }
 
             if (finalAttempt) {
                 setSong(null);
                 setError("No song found.");
+                setNextSong(null);
+                setPrevSong(null);
+                setPrevSongBuffer(null);
+                setNextSongBuffer(null);
             }
 
             return false;
@@ -91,7 +189,11 @@ const Song = () => {
                 const categories = await fetchCategories(auth.token);
                 if (cancelled) return;
 
-                updateFromCategories(categories, true);
+                const found = updateFromCategories(categories, true);
+                if (!found) {
+                    setNextSong(null);
+                    setPrevSong(null);
+                }
                 setIsLoading(false);
             } catch (err) {
                 console.error("Fetching categories failed:", err);
@@ -99,6 +201,8 @@ const Song = () => {
                 if (!hasCachedSong) {
                     setError("Failed to load song.");
                     setIsLoading(false);
+                    setNextSong(null);
+                    setPrevSong(null);
                 }
             }
         })();
@@ -107,6 +211,189 @@ const Song = () => {
             cancelled = true;
         };
     }, [id, navigate]);
+
+    useEffect(() => {
+        return () => {
+            if (advanceTimeoutRef.current) {
+                window.clearTimeout(advanceTimeoutRef.current);
+            }
+            if (transitionUnlockFrameRef.current !== null) {
+                window.cancelAnimationFrame(transitionUnlockFrameRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        const updateWidth = () => {
+            if (stackRef.current) {
+                setStackWidth(Math.max(stackRef.current.offsetWidth, 1));
+            }
+        };
+        updateWidth();
+        window.addEventListener("resize", updateWidth);
+        return () => window.removeEventListener("resize", updateWidth);
+    }, []);
+
+    useEffect(() => {
+        setIsDragging(false);
+        setIsAdvancing(false);
+        setIsTransitionLocked(true);
+        swipeStartRef.current = null;
+        swipeStartYRef.current = null;
+        swipeDeltaRef.current = 0;
+        isVerticalScrollRef.current = false;
+        setSwipeOffset(0);
+
+        if (transitionUnlockFrameRef.current !== null) {
+            window.cancelAnimationFrame(transitionUnlockFrameRef.current);
+            transitionUnlockFrameRef.current = null;
+        }
+
+        transitionUnlockFrameRef.current = window.requestAnimationFrame(() => {
+            setIsTransitionLocked(false);
+            transitionUnlockFrameRef.current = null;
+        });
+    }, [id]);
+
+    const finishSwipe = useCallback((targetOffset = 0) => {
+        setSwipeOffset(targetOffset);
+        setIsDragging(false);
+        swipeStartRef.current = null;
+        swipeStartYRef.current = null;
+        swipeDeltaRef.current = 0;
+    }, []);
+
+    const requestNavigation = useCallback(
+        (direction: "prev" | "next"): boolean => {
+            if (isAdvancing) {
+                return false;
+            }
+            const target = direction === "prev" ? prevSong : nextSong;
+            if (!target) {
+                return false;
+            }
+
+            setIsAdvancing(true);
+            const multiplier = direction === "prev" ? 1 : -1;
+            finishSwipe(travelDistance * multiplier);
+            advanceTimeoutRef.current = window.setTimeout(() => {
+                navigate(`/song/${target.id}`);
+            }, 260);
+            isVerticalScrollRef.current = false;
+            return true;
+        },
+        [finishSwipe, isAdvancing, navigate, nextSong, prevSong, travelDistance],
+    );
+
+    const handleTouchStart = (event: TouchEvent<HTMLElement>) => {
+        if (event.touches.length !== 1 || isAdvancing) {
+            return;
+        }
+        swipeStartRef.current = event.touches[0].clientX;
+        swipeStartYRef.current = event.touches[0].clientY;
+        swipeDeltaRef.current = 0;
+        isVerticalScrollRef.current = false;
+        setIsDragging(true);
+    };
+
+    const handleTouchMove = (event: TouchEvent<HTMLElement>) => {
+        if (swipeStartRef.current === null || isAdvancing) {
+            return;
+        }
+
+        const currentX = event.touches[0].clientX;
+        const currentY = event.touches[0].clientY;
+        const rawDelta = currentX - swipeStartRef.current;
+        const verticalDelta = swipeStartYRef.current === null ? 0 : Math.abs(currentY - swipeStartYRef.current);
+        if (!isVerticalScrollRef.current && verticalDelta > Math.abs(rawDelta) && verticalDelta > 6) {
+            isVerticalScrollRef.current = true;
+            finishSwipe(0);
+            return;
+        }
+
+        if (isVerticalScrollRef.current) {
+            return;
+        }
+
+        swipeDeltaRef.current = rawDelta;
+
+        if (rawDelta === 0) {
+            setSwipeOffset(0);
+            return;
+        }
+
+        const hasTarget = rawDelta > 0 ? Boolean(prevSong) : Boolean(nextSong);
+        const resistance = 1 + Math.abs(rawDelta) / RESISTANCE_FACTOR;
+        const limit = hasTarget ? MAX_SWIPE_OFFSET : MAX_SWIPE_OFFSET / 4;
+        const offset = Math.sign(rawDelta) * Math.min(Math.abs(rawDelta) / resistance, limit);
+        setSwipeOffset(offset);
+    };
+
+    const handleTouchEnd = () => {
+        if (swipeStartRef.current === null || isAdvancing) {
+            return;
+        }
+
+        if (isVerticalScrollRef.current) {
+            finishSwipe(0);
+            isVerticalScrollRef.current = false;
+            return;
+        }
+
+        const delta = swipeDeltaRef.current;
+        const shouldAdvancePrev = Boolean(prevSong && delta > SWIPE_THRESHOLD);
+        const shouldAdvanceNext = Boolean(nextSong && delta < -SWIPE_THRESHOLD);
+        if (shouldAdvancePrev) {
+            requestNavigation("prev");
+            return;
+        }
+        if (shouldAdvanceNext) {
+            requestNavigation("next");
+            return;
+        }
+
+        finishSwipe(0);
+        isVerticalScrollRef.current = false;
+    };
+
+    const handleTouchCancel = () => {
+        if (isAdvancing) {
+            return;
+        }
+        finishSwipe(0);
+        isVerticalScrollRef.current = false;
+    };
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.defaultPrevented) return;
+
+            const target = event.target as HTMLElement | null;
+            if (target) {
+                const tag = target.tagName;
+                if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) {
+                    return;
+                }
+            }
+
+            if (event.key === "ArrowLeft") {
+                const handled = requestNavigation("prev");
+                if (handled) {
+                    event.preventDefault();
+                }
+            } else if (event.key === "ArrowRight") {
+                const handled = requestNavigation("next");
+                if (handled) {
+                    event.preventDefault();
+                }
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [requestNavigation]);
 
     if (isLoading && !song) {
         return (
@@ -135,33 +422,137 @@ const Song = () => {
         );
     }
 
-    return (
-        <div className="page-shell page-shell--centered song-page">
-            <article className="song-container">
-                <header className="song-header">
-                    {song.page_number !== null && song.negative_page_number !== null && (
+    const renderSongBody = (songData: SongDetail, variant: "active" | "peek" = "active") => {
+        const HeadingTag = variant === "peek" ? "h2" : "h1";
+        return (
+            <>
+                <header className={`song-header${variant === "peek" ? " song-header--peek" : ""}`}>
+                    {songData.page_number !== null && songData.negative_page_number !== null && (
                         <div className="song-page-number song-page-number--header" aria-hidden="true">
-                            {song.page_number}
+                            {songData.page_number}
                         </div>
                     )}
-                    <h1>{song.title}</h1>
+                    <HeadingTag>{songData.title}</HeadingTag>
                     <div className="song-meta">
-                        {song.author && <p><strong>Author:</strong> {song.author}</p>}
-                        <p><strong>Mel:</strong> {song.melody || "Unknown"}</p>
+                        {songData.author && <p><strong>Author:</strong> {songData.author}</p>}
+                        <p><strong>Mel:</strong> {songData.melody || "Unknown"}</p>
                     </div>
                 </header>
-                <div className="song-lyrics" dangerouslySetInnerHTML={{ __html: song.content || "" }} />
-                {song.page_number !== null && song.negative_page_number === null && (
+                <div className="song-lyrics" dangerouslySetInnerHTML={{ __html: songData.content || "" }} />
+                {songData.page_number !== null && songData.negative_page_number === null && (
                     <div className="song-page-number" aria-label="Songbook page number">
-                        {song.page_number}
+                        {songData.page_number}
                     </div>
                 )}
-                {song.negative_page_number !== null && (
+                {songData.negative_page_number !== null && (
                     <div className="song-page-number song-page-number--negative" aria-label="Flipped songbook page number">
-                        {song.negative_page_number}
+                        {songData.negative_page_number}
                     </div>
                 )}
+            </>
+        );
+    };
+
+    const swipeProgress = Math.min(Math.abs(swipeOffset) / travelDistance, 1);
+    const offsetPercent = stackWidth ? (swipeOffset / stackWidth) * 100 : 0;
+    const transitionsDisabled = isDragging || isTransitionLocked;
+    const swipeStyle: CSSProperties & { "--song-swipe-progress"?: string } = {
+        transform: `translateX(${offsetPercent}%)`,
+        transition: transitionsDisabled ? "none" : "transform 240ms cubic-bezier(0.22, 0.61, 0.36, 1)",
+        opacity: isAdvancing ? 0.25 : 1 - swipeProgress * 0.08,
+        "--song-swipe-progress": swipeProgress.toString(),
+    };
+    const rightProgress = swipeOffset > 0 ? Math.min(swipeOffset / travelDistance, 1) : 0;
+    const leftProgress = swipeOffset < 0 ? Math.min(-swipeOffset / travelDistance, 1) : 0;
+    const prevIndicatorStyle: CSSProperties = {
+        opacity: prevSong ? 0.3 + rightProgress * 0.7 : 0.3,
+    };
+    const nextIndicatorStyle: CSSProperties = {
+        opacity: nextSong ? 0.3 + leftProgress * 0.7 : 0.3,
+    };
+    const prevPeekStyle: CSSProperties | undefined = prevSong
+        ? {
+              transform: `translateX(${-PEEK_EDGE_PERCENT + offsetPercent * PEEK_PARALLAX_FACTOR}%) scale(${PEEK_SCALE})`,
+              opacity: 0.15 + rightProgress * 0.4,
+              transition: transitionsDisabled ? "none" : undefined,
+          }
+        : undefined;
+    const nextPeekStyle: CSSProperties | undefined = nextSong
+        ? {
+              transform: `translateX(${PEEK_EDGE_PERCENT + offsetPercent * PEEK_PARALLAX_FACTOR}%) scale(${PEEK_SCALE})`,
+              opacity: 0.15 + leftProgress * 0.4,
+              transition: transitionsDisabled ? "none" : undefined,
+          }
+        : undefined;
+    const renderPeekCard = (direction: "prev" | "next", data: SongDetail, style: CSSProperties | undefined) => {
+        if (!style) return null;
+        return (
+            <article
+                className={`song-container song-container--peek song-container--peek-${direction}`}
+                style={style}
+                aria-hidden="true"
+            >
+                {renderSongBody(data)}
             </article>
+        );
+    };
+
+    const containerClassNames = [
+        "song-container",
+        "song-container--active",
+        isDragging ? "song-container--dragging" : "",
+        isAdvancing ? "song-container--advancing" : "",
+    ]
+        .filter(Boolean)
+        .join(" ");
+
+    return (
+        <div className="page-shell page-shell--centered song-page">
+            <div className="song-stack" ref={stackRef}>
+                {prevSong && renderPeekCard("prev", prevSong, prevPeekStyle)}
+                <article
+                    className={containerClassNames}
+                    style={swipeStyle}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchCancel}
+                >
+                    {renderSongBody(song)}
+                </article>
+                {nextSong && renderPeekCard("next", nextSong, nextPeekStyle)}
+                <div className="song-preload-cache" aria-hidden="true">
+                    {[prevSongBuffer, nextSongBuffer].map((bufferSong) =>
+                        bufferSong ? (
+                            <article key={`preload-${bufferSong.id}`}>
+                                {renderSongBody(bufferSong, "peek")}
+                            </article>
+                        ) : null,
+                    )}
+                </div>
+            </div>
+            {prevSong && (
+                <div className="song-next-indicator song-next-indicator--left" style={prevIndicatorStyle} aria-live="polite">
+                    <p className="song-next-indicator__label">Swipe right for previous</p>
+                    <p className="song-next-indicator__title">
+                        {prevSong.title}
+                        {typeof prevSong.page_number === "number" && (
+                            <span className="song-next-indicator__page"> · Page {prevSong.page_number}</span>
+                        )}
+                    </p>
+                </div>
+            )}
+            {nextSong && (
+                <div className="song-next-indicator song-next-indicator--right" style={nextIndicatorStyle} aria-live="polite">
+                    <p className="song-next-indicator__label">Swipe left for next</p>
+                    <p className="song-next-indicator__title">
+                        {nextSong.title}
+                        {typeof nextSong.page_number === "number" && (
+                            <span className="song-next-indicator__page"> · Page {nextSong.page_number}</span>
+                        )}
+                    </p>
+                </div>
+            )}
             <Footer />
         </div>
     );

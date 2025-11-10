@@ -1,5 +1,17 @@
+.song-stack {
+    width: min(100%, 36rem);
+    margin: 0 auto;
+    position: relative;
+    overflow: visible;
+}
+
+.song-preload-cache {
+    display: none;
+}
+
 .song-container {
     --song-content-padding: clamp(0.75rem, 0.9rem + 0.5vw, 1.25rem);
+    --song-swipe-progress: 0;
     background: var(--gradient-card);
     color: var(--color-text);
     padding: clamp(0.3rem, 0.25rem + 0.7vw, 0.8rem);
@@ -8,11 +20,51 @@
     box-shadow: 0 10px 24px rgba(2, 6, 23, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(18px);
-    width: min(100%, 36rem);
-    margin: 0 auto;
+    width: 100%;
+    margin: 0;
     display: flex;
     flex-direction: column;
     gap: clamp(1rem, 1.1rem + 0.6vw, 1.9rem);
+    position: relative;
+    touch-action: pan-y;
+    will-change: transform, opacity;
+    transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 220ms ease;
+}
+
+.song-container--dragging {
+    cursor: grabbing;
+}
+
+.song-container--advancing {
+    pointer-events: none;
+}
+
+.song-container::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0));
+    opacity: calc(var(--song-swipe-progress) * 0.8);
+    pointer-events: none;
+}
+
+.song-container--active {
+    z-index: 2;
+}
+
+.song-container--peek {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.45;
+    filter: saturate(0.9);
+    transition: transform 240ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 200ms ease;
+}
+
+.song-container--peek::after {
+    opacity: 0;
 }
 
 .song-header {
@@ -54,7 +106,7 @@
     text-align: left;
     font-size: clamp(0.9rem, 0.88rem + 0.3vw, 1.05rem);
     word-break: break-word;
-    overflow-x: auto;
+    overflow-x: hidden;
     color: var(--color-text);
 }
 
@@ -97,6 +149,71 @@
 
 .song-page-number--negative {
     margin-top: auto;
+}
+
+.song-header--peek {
+    gap: 0.5rem;
+}
+
+.song-header--peek h2 {
+    font-size: clamp(1.3rem, 1rem + 1vw, 1.6rem);
+}
+
+.song-peek-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    margin: 0;
+    color: var(--color-text-secondary);
+}
+
+.song-page {
+    width: 100%;
+    overflow-x: hidden;
+}
+
+.song-next-indicator {
+    margin: clamp(0.75rem, 0.6rem + 0.6vw, 1.2rem) auto 0;
+    text-align: center;
+    color: var(--color-text-secondary);
+    max-width: 28rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: opacity 200ms ease;
+}
+
+.song-next-indicator--left {
+    margin-left: 0;
+    margin-right: auto;
+    text-align: left;
+}
+
+.song-next-indicator--right {
+    margin-left: auto;
+    margin-right: 0;
+    text-align: right;
+}
+
+.song-next-indicator__label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    margin: 0;
+    opacity: 0.8;
+}
+
+.song-next-indicator__title {
+    margin: 0.15rem 0 0;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--color-text);
+}
+
+.song-next-indicator__page {
+    font-weight: 400;
+    color: var(--color-text-secondary);
 }
 
 @media (min-width: 768px) {
