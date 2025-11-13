@@ -223,3 +223,9 @@
         gap: 0.35rem;
     }
 }
+
+@media (hover: hover) and (pointer: fine) {
+    .song-next-indicator {
+        display: none;
+    }
+}
