@@ -569,8 +569,8 @@ const Song = () => {
         "song-container--active",
         isDragging ? "song-container--dragging" : "",
         isAdvancing ? "song-container--advancing" : "",
-        isAdvancing && advanceDirection === "prev" ? "shuffle-right" : "",
-        isAdvancing && advanceDirection === "next" ? "shuffle-left" : "",
+        isAdvancing && advanceDirection === "prev" ? "song-container--shuffle-right" : "",
+        isAdvancing && advanceDirection === "next" ? "song-container--shuffle-left" : "",
     ]
         .filter(Boolean)
         .join(" ");
