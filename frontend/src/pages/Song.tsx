@@ -111,6 +111,8 @@ const Song = () => {
     const [isDragging, setIsDragging] = useState(false);
     const [isAdvancing, setIsAdvancing] = useState(false);
     const [isTransitionLocked, setIsTransitionLocked] = useState(false);
+    const [advanceDirection, setAdvanceDirection] = useState<"prev" | "next" | null>(null);
+    const startOffsetRef = useRef(0);
     const stackRef = useRef<HTMLDivElement | null>(null);
     const [stackWidth, setStackWidth] = useState(360);
     const swipeStartRef = useRef<number | null>(null);
@@ -125,11 +127,9 @@ const Song = () => {
     const PEEK_PERCENT = 12;
     const idlePercent = 100 - PEEK_PERCENT;
     const PEEK_EDGE_PERCENT = 5;
-    const PEEK_PARALLAX_FACTOR = 0.12;
+    const PEEK_PARALLAX_FACTOR = PEEK_EDGE_PERCENT / idlePercent;
     const PEEK_SCALE = 0.96;
     const travelDistance = Math.max(stackWidth * (idlePercent / 100), 160);
-    const MAX_SWIPE_OFFSET = travelDistance;
-    const RESISTANCE_FACTOR = travelDistance * 1.1;
     const SWIPE_THRESHOLD = Math.min(120, travelDistance * 0.3);
 
     useEffect(() => {
@@ -237,6 +237,7 @@ const Song = () => {
     useEffect(() => {
         setIsDragging(false);
         setIsAdvancing(false);
+        setAdvanceDirection(null);
         setIsTransitionLocked(true);
         swipeStartRef.current = null;
         swipeStartYRef.current = null;
@@ -274,15 +275,21 @@ const Song = () => {
             }
 
             setIsAdvancing(true);
-            const multiplier = direction === "prev" ? 1 : -1;
-            finishSwipe(travelDistance * multiplier);
+            setAdvanceDirection(direction);
+            
+            // Store the exact current visual state for the animation start point
+            startOffsetRef.current = swipeOffset;
+            
+            // We do NOT call finishSwipe with travelDistance anymore.
+            // Instead, we let the Render loop switch to "Shuffle Mode".
+            
             advanceTimeoutRef.current = window.setTimeout(() => {
                 navigate(`/song/${target.id}`);
-            }, 260);
+            }, 500); // Wait for the 500ms shuffle animation
             isVerticalScrollRef.current = false;
             return true;
         },
-        [finishSwipe, isAdvancing, navigate, nextSong, prevSong, travelDistance],
+        [isAdvancing, navigate, nextSong, prevSong, swipeOffset],
     );
 
     const handleTouchStart = (event: TouchEvent<HTMLElement>) => {
@@ -305,7 +312,7 @@ const Song = () => {
         const currentY = event.touches[0].clientY;
         const rawDelta = currentX - swipeStartRef.current;
         const verticalDelta = swipeStartYRef.current === null ? 0 : Math.abs(currentY - swipeStartYRef.current);
-        if (!isVerticalScrollRef.current && verticalDelta > Math.abs(rawDelta) && verticalDelta > 6) {
+        if (!isVerticalScrollRef.current && verticalDelta > Math.abs(rawDelta) && verticalDelta > 8) {
             isVerticalScrollRef.current = true;
             finishSwipe(0);
             return;
@@ -323,10 +330,24 @@ const Song = () => {
         }
 
         const hasTarget = rawDelta > 0 ? Boolean(prevSong) : Boolean(nextSong);
-        const resistance = 1 + Math.abs(rawDelta) / RESISTANCE_FACTOR;
-        const limit = hasTarget ? MAX_SWIPE_OFFSET : MAX_SWIPE_OFFSET / 4;
-        const offset = Math.sign(rawDelta) * Math.min(Math.abs(rawDelta) / resistance, limit);
-        setSwipeOffset(offset);
+        let offset: number;
+
+        if (hasTarget) {
+            if (Math.abs(rawDelta) > travelDistance) {
+                const overflow = Math.abs(rawDelta) - travelDistance;
+                const resistance = 1 + overflow / (travelDistance * 0.5);
+                offset = Math.sign(rawDelta) * (travelDistance + overflow / resistance);
+            } else {
+                offset = rawDelta;
+            }
+        } else {
+            const resistance = 1 + Math.abs(rawDelta) / (travelDistance * 0.5);
+            offset = Math.sign(rawDelta) * (Math.abs(rawDelta) / resistance);
+        }
+
+        const limit = hasTarget ? travelDistance * 1.1 : travelDistance / 4;
+        const finalOffset = Math.sign(offset) * Math.min(Math.abs(offset), limit);
+        setSwipeOffset(finalOffset);
     };
 
     const handleTouchEnd = () => {
@@ -456,34 +477,81 @@ const Song = () => {
     const swipeProgress = Math.min(Math.abs(swipeOffset) / travelDistance, 1);
     const offsetPercent = stackWidth ? (swipeOffset / stackWidth) * 100 : 0;
     const transitionsDisabled = isDragging || isTransitionLocked;
-    const swipeStyle: CSSProperties & { "--song-swipe-progress"?: string } = {
-        transform: `translateX(${offsetPercent}%)`,
-        transition: transitionsDisabled ? "none" : "transform 240ms cubic-bezier(0.22, 0.61, 0.36, 1)",
-        opacity: isAdvancing ? 0.25 : 1 - swipeProgress * 0.08,
+    
+    // Default Styles (Interactive)
+    let swipeStyle: CSSProperties & { [key: string]: string | number | undefined } = {
+        transform: `translateX(${offsetPercent}%) scale(${1 - swipeProgress * 0.06}) rotate(${offsetPercent * 0.01}deg)`,
+        transition: transitionsDisabled ? "none" : "transform 450ms cubic-bezier(0.16, 1, 0.3, 1), opacity 450ms ease",
+        opacity: 1 - swipeProgress * 0.2,
+        zIndex: 2,
         "--song-swipe-progress": swipeProgress.toString(),
     };
+
     const rightProgress = swipeOffset > 0 ? Math.min(swipeOffset / travelDistance, 1) : 0;
     const leftProgress = swipeOffset < 0 ? Math.min(-swipeOffset / travelDistance, 1) : 0;
+
+    let prevPeekStyle: CSSProperties | undefined = prevSong
+        ? {
+              transform: `translateX(${-PEEK_EDGE_PERCENT + offsetPercent * PEEK_PARALLAX_FACTOR}%) scale(${PEEK_SCALE + (1 - PEEK_SCALE) * rightProgress})`,
+              opacity: 0.15 + rightProgress * 0.85,
+              transition: transitionsDisabled ? "none" : "transform 450ms cubic-bezier(0.16, 1, 0.3, 1), opacity 450ms ease",
+              zIndex: rightProgress > 0.01 ? 5 : 1,
+          }
+        : undefined;
+
+    let nextPeekStyle: CSSProperties | undefined = nextSong
+        ? {
+              transform: `translateX(${PEEK_EDGE_PERCENT + offsetPercent * PEEK_PARALLAX_FACTOR}%) scale(${PEEK_SCALE + (1 - PEEK_SCALE) * leftProgress})`,
+              opacity: 0.15 + leftProgress * 0.85,
+              transition: transitionsDisabled ? "none" : "transform 450ms cubic-bezier(0.16, 1, 0.3, 1), opacity 450ms ease",
+              zIndex: leftProgress > 0.01 ? 5 : 1,
+          }
+        : undefined;
+
+    // Shuffle Animation Overrides
+    if (isAdvancing && advanceDirection) {
+        // Set CSS Variables for the start position of the shuffle animation
+        const startPercent = stackWidth ? (startOffsetRef.current / stackWidth) * 100 : 0;
+        const startScale = 1 - (Math.abs(startOffsetRef.current) / travelDistance) * 0.06;
+        const startRotate = startPercent * 0.01;
+        
+        // Active Card -> Shuffles Away
+        swipeStyle = {
+            ...swipeStyle,
+            "--start-offset": `${startPercent}%`,
+            "--start-scale": startScale.toString(),
+            "--start-rotate": `${startRotate}deg`,
+            // We don't set animation name here, we set class below.
+            // But we must ensure transition is off so animation takes over instantly.
+            transition: "none",
+        };
+
+        if (advanceDirection === "prev" && prevPeekStyle) {
+            // Incoming (Prev) -> Moves to Center
+            prevPeekStyle = {
+                transform: "translateX(0) scale(1)",
+                opacity: 1,
+                zIndex: 10,
+                transition: "transform 450ms cubic-bezier(0.16, 1, 0.3, 1), opacity 450ms ease",
+            };
+        } else if (advanceDirection === "next" && nextPeekStyle) {
+             // Incoming (Next) -> Moves to Center
+             nextPeekStyle = {
+                transform: "translateX(0) scale(1)",
+                opacity: 1,
+                zIndex: 10,
+                transition: "transform 450ms cubic-bezier(0.16, 1, 0.3, 1), opacity 450ms ease",
+            };
+        }
+    }
+
     const prevIndicatorStyle: CSSProperties = {
         opacity: prevSong ? 0.3 + rightProgress * 0.7 : 0.3,
     };
     const nextIndicatorStyle: CSSProperties = {
         opacity: nextSong ? 0.3 + leftProgress * 0.7 : 0.3,
     };
-    const prevPeekStyle: CSSProperties | undefined = prevSong
-        ? {
-              transform: `translateX(${-PEEK_EDGE_PERCENT + offsetPercent * PEEK_PARALLAX_FACTOR}%) scale(${PEEK_SCALE})`,
-              opacity: 0.15 + rightProgress * 0.4,
-              transition: transitionsDisabled ? "none" : undefined,
-          }
-        : undefined;
-    const nextPeekStyle: CSSProperties | undefined = nextSong
-        ? {
-              transform: `translateX(${PEEK_EDGE_PERCENT + offsetPercent * PEEK_PARALLAX_FACTOR}%) scale(${PEEK_SCALE})`,
-              opacity: 0.15 + leftProgress * 0.4,
-              transition: transitionsDisabled ? "none" : undefined,
-          }
-        : undefined;
+   
     const renderPeekCard = (direction: "prev" | "next", data: SongDetail, style: CSSProperties | undefined) => {
         if (!style) return null;
         return (
@@ -502,6 +570,8 @@ const Song = () => {
         "song-container--active",
         isDragging ? "song-container--dragging" : "",
         isAdvancing ? "song-container--advancing" : "",
+        isAdvancing && advanceDirection === "prev" ? "shuffle-right" : "",
+        isAdvancing && advanceDirection === "next" ? "shuffle-left" : "",
     ]
         .filter(Boolean)
         .join(" ");
