@@ -112,7 +112,7 @@ const Song = () => {
     const [isAdvancing, setIsAdvancing] = useState(false);
     const [isTransitionLocked, setIsTransitionLocked] = useState(false);
     const [advanceDirection, setAdvanceDirection] = useState<"prev" | "next" | null>(null);
-    const startOffsetRef = useRef(0);
+    const [animationStartOffset, setAnimationStartOffset] = useState(0);
     const stackRef = useRef<HTMLDivElement | null>(null);
     const [stackWidth, setStackWidth] = useState(360);
     const swipeStartRef = useRef<number | null>(null);
@@ -274,11 +274,10 @@ const Song = () => {
                 return false;
             }
 
+            // Store the exact current visual state for the animation start point
+            setAnimationStartOffset(swipeOffset);
             setIsAdvancing(true);
             setAdvanceDirection(direction);
-            
-            // Store the exact current visual state for the animation start point
-            startOffsetRef.current = swipeOffset;
             
             // We do NOT call finishSwipe with travelDistance anymore.
             // Instead, we let the Render loop switch to "Shuffle Mode".
@@ -511,8 +510,8 @@ const Song = () => {
     // Shuffle Animation Overrides
     if (isAdvancing && advanceDirection) {
         // Set CSS Variables for the start position of the shuffle animation
-        const startPercent = stackWidth ? (startOffsetRef.current / stackWidth) * 100 : 0;
-        const startScale = 1 - (Math.abs(startOffsetRef.current) / travelDistance) * 0.06;
+        const startPercent = stackWidth ? (animationStartOffset / stackWidth) * 100 : 0;
+        const startScale = 1 - (Math.abs(animationStartOffset) / travelDistance) * 0.06;
         const startRotate = startPercent * 0.01;
         
         // Active Card -> Shuffles Away
