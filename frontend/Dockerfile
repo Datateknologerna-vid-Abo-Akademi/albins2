@@ -1,16 +1,12 @@
-FROM node:20-alpine as builder
-
-RUN apk add --no-cache build-base libc6-compat gcompat
-
-RUN corepack enable && corepack prepare pnpm@9 --activate
+FROM oven/bun:1 as builder
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
 COPY . .
-RUN pnpm run build
+RUN bun run build
 
 
 FROM nginx:stable-alpine

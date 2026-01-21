@@ -61,27 +61,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v3
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
         with:
-          version: 9
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          bun-version: latest
 
       - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
         working-directory: frontend
 
       - name: Run frontend lint
-        run: pnpm lint
+        run: bun lint
         working-directory: frontend
 
       - name: Run frontend tests
-        run: pnpm test
+        run: bun test
         working-directory: frontend

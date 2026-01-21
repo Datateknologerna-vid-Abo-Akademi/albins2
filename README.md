@@ -38,14 +38,14 @@ Everything else (Python, Node.js, database, nginx) is provisioned inside contain
 - Run Django migrations: `alb-manage migrate`
 - Execute the test suite: `alb-manage test`
 - Create a superuser: `alb-manage createsuperuser`
-- Run frontend pnpm tasks from the repo root: `alb-pnpm <command>` (e.g., `alb-pnpm lint`)
+- Run frontend bun tasks from the repo root: `alb-bun <command>` (e.g., `alb-bun lint`)
 - Import seed data: `albins_import_songs`
 
 All helper aliases route to `docker compose` commands defined in `env.dev.sh` / `env.prod.sh`. Use them (or call the corresponding `docker compose -f docker-compose.dev.yml …` command) instead of running services directly on the host.
 
 ## Testing
 - Backend: `alb-manage test`
-- Frontend lint: `alb-pnpm lint`
+- Frontend lint: `alb-bun lint`
 
 Make sure the Django test suite passes before opening a pull request.
 
