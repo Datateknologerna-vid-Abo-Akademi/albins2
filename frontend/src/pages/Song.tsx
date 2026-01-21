@@ -511,7 +511,8 @@ const Song = () => {
     if (isAdvancing && advanceDirection) {
         // Set CSS Variables for the start position of the shuffle animation
         const startPercent = stackWidth ? (animationStartOffset / stackWidth) * 100 : 0;
-        const startScale = 1 - (Math.abs(animationStartOffset) / travelDistance) * 0.06;
+        const distanceRatio = travelDistance ? Math.min(Math.abs(animationStartOffset) / travelDistance, 1) : 0;
+        const startScale = 1 - distanceRatio * 0.06;
         const startRotate = startPercent * 0.01;
         
         // Active Card -> Shuffles Away
