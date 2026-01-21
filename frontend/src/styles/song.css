@@ -92,6 +92,16 @@
     animation: shuffleOutLeft 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .song-container.shuffle-right,
+    .song-container.shuffle-left {
+        animation: none;
+    }
+
+    .song-container--peek {
+        transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1), opacity 150ms ease;
+    }
+}
 .song-container::after {
     content: "";
     position: absolute;
