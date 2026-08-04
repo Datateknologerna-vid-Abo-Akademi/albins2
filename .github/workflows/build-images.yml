@@ -1,9 +1,11 @@
-name: Build Docker Images
+name: Build and publish Docker images
 
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
 
 permissions:
@@ -11,161 +13,142 @@ permissions:
   packages: write
 
 jobs:
-  test-backend:
+  build:
+    concurrency:
+      group: docker-publish-${{ github.ref_name }}-${{ matrix.service }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: albins
-          POSTGRES_USER: albins
-          POSTGRES_PASSWORD: albins
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U albins"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      POSTGRES_DB: albins
-      POSTGRES_USER: albins
-      POSTGRES_PASSWORD: albins
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: backend/requirements.txt
-
-      - name: Install backend dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-        working-directory: backend
-
-      - name: Run backend tests
-        run: python manage.py test --noinput
-        working-directory: backend
-
-  test-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-        working-directory: frontend
-
-      - name: Run frontend lint
-        run: pnpm lint
-        working-directory: frontend
-
-      - name: Run frontend tests
-        run: pnpm test
-        working-directory: frontend
-
-  build-images:
-    runs-on: ubuntu-latest
-    needs:
-      - test-backend
-      - test-frontend
+    timeout-minutes: 45
+    if: github.ref_type == 'branch'
     strategy:
       fail-fast: false
       matrix:
         include:
-          - service: backend
+          - service: api
             context: backend
             dockerfile: backend/Dockerfile.prod
           - service: frontend
             context: frontend
             dockerfile: frontend/Dockerfile
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Determine changes for ${{ matrix.service }}
-        id: changes
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          BASE_SHA="${{ github.event.before }}"
-          if [[ -z "$BASE_SHA" || "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then
-            if git rev-parse HEAD^ >/dev/null 2>&1; then
-              BASE_SHA="$(git rev-parse HEAD^)"
-            else
-              echo "changed=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          fi
-
-          if git diff --quiet "$BASE_SHA" "${{ github.sha }}" -- ${{ matrix.context }}; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
+        uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        if: steps.changes.outputs.changed == 'true'
+        uses: docker/setup-buildx-action@v4
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        if: steps.changes.outputs.changed == 'true'
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Prepare tags
-        id: prep
-        if: steps.changes.outputs.changed == 'true'
+      - name: Docker login with retry
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          REPOSITORY_LC="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
-          IMAGE_BASE="ghcr.io/${REPOSITORY_LC}/${{ matrix.service }}"
-          TAGS="${IMAGE_BASE}:${{ github.sha }}"
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            TAGS="${TAGS},${IMAGE_BASE}:latest"
-          fi
-          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin; then
+              exit 0
+            fi
+            if [ "${attempt}" -lt 3 ]; then
+              sleep $((attempt * 5))
+            fi
+          done
+          echo "GHCR login failed after 3 attempts."
+          exit 1
 
-      - name: Build and push ${{ matrix.service }} image
-        uses: docker/build-push-action@v5
-        if: steps.changes.outputs.changed == 'true'
+      - name: Compute image tags
+        id: tags
+        env:
+          IMAGE_REPO: ghcr.io/${{ github.repository }}-${{ matrix.service }}
+        run: |
+          set -euo pipefail
+
+          TAGS=("${IMAGE_REPO}:${GITHUB_SHA}")
+
+          if [ "${GITHUB_REF_TYPE}" = "branch" ] && [ "${GITHUB_REF_NAME}" = "main" ]; then
+            TAGS+=("${IMAGE_REPO}:qa")
+          fi
+
+          {
+            echo "value<<EOF"
+            printf '%s\n' "${TAGS[@]}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: true
-          pull: true
-          no-cache: true
-          tags: ${{ steps.prep.outputs.tags }}
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tags.outputs.value }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Skip build
-        if: steps.changes.outputs.changed != 'true'
-        run: echo "Skipping build for ${{ matrix.service }}; no changes detected."
+  release:
+    concurrency:
+      group: docker-publish-${{ github.ref_name }}-${{ matrix.service }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.ref_type == 'tag'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api
+          - service: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Docker login with retry
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin; then
+              exit 0
+            fi
+            if [ "${attempt}" -lt 3 ]; then
+              sleep $((attempt * 5))
+            fi
+          done
+          echo "GHCR login failed after 3 attempts."
+          exit 1
+
+      - name: Promote the existing image to release tags
+        env:
+          IMAGE_REPO: ghcr.io/${{ github.repository }}-${{ matrix.service }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Tag ${GITHUB_REF_NAME} is not a SemVer release tag, skipping."
+            exit 0
+          fi
+
+          MAJOR="${BASH_REMATCH[1]}"
+          MINOR="${BASH_REMATCH[2]}"
+
+          SOURCE_TAG="${IMAGE_REPO}:${GITHUB_SHA}"
+
+          # The release tag is created after the main build starts; wait for
+          # the SHA-tagged image, then reuse that digest instead of rebuilding.
+          for attempt in $(seq 1 24); do
+            if docker buildx imagetools inspect "${SOURCE_TAG}" >/dev/null 2>&1; then
+              break
+            fi
+            if [ "${attempt}" -eq 24 ]; then
+              echo "Timed out waiting for ${SOURCE_TAG} to exist."
+              exit 1
+            fi
+            sleep 10
+          done
+
+          docker buildx imagetools create \
+            --tag "${IMAGE_REPO}:${GITHUB_REF_NAME}" \
+            --tag "${IMAGE_REPO}:v${MAJOR}.${MINOR}" \
+            --tag "${IMAGE_REPO}:v${MAJOR}" \
+            --tag "${IMAGE_REPO}:prod" \
+            --tag "${IMAGE_REPO}:latest" \
+            "${SOURCE_TAG}"
