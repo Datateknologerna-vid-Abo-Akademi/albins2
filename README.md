@@ -119,9 +119,14 @@ set with:
 wrangler secret put TURNSTILE_SECRET
 ```
 
-The widget must have every hostname it is served from registered. Never put
-`localhost`, `127.0.0.1` or `example.com` in a deployed `TURNSTILE_HOSTNAMES`
-value.
+The widget must have every hostname it is served from registered. The Worker is
+served from `albins.app` only. `www.albins.app` is redirected to the apex by a
+zone level Redirect Rule in Cloudflare rather than by this app, so `www` must
+not be bound to the Worker as a custom domain: if it were, those requests would
+reach the app with a hostname the gate does not accept and would fail closed
+with a `403`. The `www` DNS record still has to stay proxied for the rule to
+run, and it must not point at a retired origin. Never put `localhost`,
+`127.0.0.1` or `example.com` in a deployed `TURNSTILE_HOSTNAMES` value.
 
 ## Access control
 
@@ -204,4 +209,8 @@ pnpm exec opennextjs-cloudflare deploy
 ```
 
 `wrangler.jsonc` intentionally has no route or custom domain yet, so nothing is
-served from a hostname until that is added.
+served from a hostname until that is added. Bind `albins.app` as the Worker's
+custom domain, and handle `www.albins.app` with a zone level Redirect Rule that
+sends it to the apex with a `308` while preserving the path and query. Leave
+`www` unbound as a Worker custom domain and keep its DNS record proxied so the
+rule runs.

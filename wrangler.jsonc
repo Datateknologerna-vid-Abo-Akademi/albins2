@@ -22,9 +22,11 @@
   "vars": {
     // Rendered into the start screen. Public and safe to commit.
     "TURNSTILE_SITE_KEY": "0x4AAAAAAFXzEiqLnNlrl6Y1",
-    // Hostnames siteverify must report. Never include localhost, 127.0.0.1 or
+    // Hostnames siteverify must report. The Worker is served from the apex
+    // only: www is redirected to it by a zone level Redirect Rule, so www must
+    // not be bound to the Worker. Never include localhost, 127.0.0.1 or
     // example.com here.
-    "TURNSTILE_HOSTNAMES": "albins.app,www.albins.app"
+    "TURNSTILE_HOSTNAMES": "albins.app"
   },
   // The id is a local placeholder. Replace it with the real id once a D1
   // database exists; local development and local migrations do not use it.
