@@ -5,3 +5,20 @@ albins-data.json
 .env.example
 songs.json
 backend/static/
+
+# Read-only export of the production corpus, used to seed D1.
+.migration/
+
+# OpenNext and wrangler build and local state directories.
+workers/.open-next/
+workers/.wrangler/
+workers/.next/
+workers/node_modules/
+
+# TypeScript incremental build info and Next.js generated types.
+workers/tsconfig.tsbuildinfo
+workers/next-env.d.ts
+
+# Local secrets and local environment files.
+workers/.dev.vars
+workers/.env
