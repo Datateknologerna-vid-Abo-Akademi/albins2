@@ -1,7 +1,21 @@
-albins-data.json
-*.idea*
+# Read-only export of the production corpus, used to seed D1.
+.migration/
+
+# OpenNext and wrangler build and local state directories.
+.open-next/
+.wrangler/
+.next/
+node_modules/
+
+# TypeScript incremental build info and Next.js generated types.
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Wrangler's default output name. `pnpm generate:cloudflare-types` writes
+# cloudflare-env.d.ts instead, which is committed, so a bare `wrangler types`
+# would otherwise add a duplicate of it.
+worker-configuration.d.ts
+
+# Local secrets and local environment files.
+.dev.vars
 .env
-.env.prod
-.env.example
-songs.json
-backend/static/

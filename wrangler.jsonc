@@ -1,0 +1,49 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "albins",
+  "main": ".open-next/worker.js",
+  // OpenNext writes the Worker bundle and static assets here.
+  "compatibility_date": "2025-08-15",
+  "compatibility_flags": [
+    // Node.js APIs used by Payload and Next.js.
+    "nodejs_compat",
+    // Outbound fetch does not see private addresses.
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // The cutover. A route intercepts requests for the zone before they reach the
+  // origin, so the apex keeps its existing DNS record and the cluster keeps
+  // running as the rollback path: remove this route and traffic goes straight
+  // back to it.
+  "routes": [
+    {
+      "pattern": "albins.app/*",
+      "zone_name": "albins.app"
+    }
+  ],
+  // Public configuration. TURNSTILE_SECRET is not here: it is a secret and is
+  // set with `wrangler secret put TURNSTILE_SECRET`.
+  "vars": {
+    // Rendered into the start screen. Public and safe to commit.
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFXzEiqLnNlrl6Y1",
+    // Hostnames siteverify must report. The Worker is served from the apex
+    // only: www is redirected to it by a zone level Redirect Rule, so www must
+    // not be bound to the Worker. Never include localhost, 127.0.0.1 or
+    // example.com here.
+    "TURNSTILE_HOSTNAMES": "albins.app"
+  },
+  // The `albins` D1 database in the Datateknologerna account, region EEUR.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "albins",
+      "database_id": "db96f423-6b52-4848-83ce-7183b22bb79b"
+    }
+  ]
+}

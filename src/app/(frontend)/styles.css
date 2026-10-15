@@ -1,0 +1,22 @@
+/* Global stylesheet for the public frontend.
+ *
+ * The import order reproduces the old client's cascade. There, every page and
+ * component imported its own stylesheet and index.css (the custom properties,
+ * the shared rules and the element defaults) was imported last from the entry
+ * point, so shared.css won the few specificity ties it has with the page
+ * stylesheets (`.card h2` against `.song-card h2`, `.card` against
+ * `.category-card--skeleton`).
+ *
+ * The Inter font is imported by styles/index.css, as it was by the old
+ * index.css. Next concatenates all of this into one file and emits that
+ * @import at the end, where a browser ignores it, so the layout also links the
+ * font stylesheet directly.
+ */
+@import './styles/Start.css';
+@import './styles/Categories.css';
+@import './styles/Songs.css';
+@import './styles/Search.css';
+@import './styles/Footer.css';
+@import './styles/song.css';
+@import './styles/App.css';
+@import './styles/index.css';

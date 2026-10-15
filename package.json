@@ -1,0 +1,47 @@
+{
+  "name": "albins-workers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Albins songbook on Payload CMS 3 and Next.js, deployed to Cloudflare Workers with D1",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build --webpack",
+    "build:worker": "opennextjs-cloudflare build",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "typecheck": "tsc --noEmit",
+    "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
+    "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
+    "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
+    "generate:cloudflare-types": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "migrate:create": "cross-env NODE_OPTIONS=--no-deprecation payload migrate:create",
+    "migrate": "cross-env NODE_OPTIONS=--no-deprecation payload migrate",
+    "migrate:local": "wrangler d1 migrations apply DB --local",
+    "import:songs": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/import-songs.ts"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "~1.20.12",
+    "@payloadcms/db-d1-sqlite": "3.90.2",
+    "@payloadcms/next": "3.90.2",
+    "@payloadcms/richtext-lexical": "3.90.2",
+    "@payloadcms/translations": "3.90.2",
+    "@payloadcms/ui": "3.90.2",
+    "cross-env": "^10.1.0",
+    "graphql": "^16.8.1",
+    "next": "^16.4.1",
+    "payload": "3.90.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "6.0.3",
+    "wrangler": "^4.151.0"
+  },
+  "engines": {
+    "node": ">=20.9.0",
+    "pnpm": "^10 || ^11"
+  }
+}

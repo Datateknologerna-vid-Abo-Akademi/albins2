@@ -1,31 +1,43 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `backend/` hosts the Django project: `albins2/` for settings, domain apps in `api/`, `auth/`, and `songs/`, each with its own `migrations/`. Shared scripts live under `backend/scripts/` (for example `import_songs.py`).
-- `frontend/` contains the React + TypeScript Vite client. Source files sit in `frontend/src/`, static assets in `frontend/public/`, and Dockerfiles per environment at the root.
-- `yxorp/` stores nginx reverse-proxy configs, while `docker-compose.*.yml` files orchestrate the full stack with Postgres.
+- This repository is the whole Albins service: a Payload CMS 3 and Next.js 16 app deployed to Cloudflare Workers with a D1 database. There is no separate API or client project.
+- `src/app/(frontend)/` holds the public client: the start screen, the `categories`, `songs`, `search` and `song/[id]` routes, the `not-found.tsx` redirect, the ported modules under `components/`, `services/` and `utils/`, and the stylesheets under `styles/`. `src/app/(payload)/` holds the Payload admin panel and its REST and GraphQL routes. `src/app/api/session/` and `src/app/api/songbook/` hold the two custom routes.
+- `src/collections/` defines the Payload collections, `src/access/` the shared access functions, `src/lib/` the signing and HTML conversion helpers, and `src/migrations/` the checked-in D1 migrations.
+- `scripts/` holds local and CI tooling; `scripts/import-songs.ts` seeds D1 from `.migration/songs-export.json` (gitignored, read-only production export). `public/` holds static assets such as the Albin logo, the offline page and the service worker.
+- `wrangler.jsonc` is the Worker configuration, `open-next.config.ts` the OpenNext build config, and `.github/workflows/checks.yml` the only CI workflow.
 
 ## Build, Test, and Development Commands
-- Spin up the stack with hot reloading: `docker compose -f docker-compose.dev.yml up --build` (after sourcing `env.dev.sh` or `env.prod.sh`, use `alb up --build`, `alb down`, etc.).
-- Run backend tasks inside the container: `docker compose -f docker-compose.dev.yml run --rm backend python manage.py migrate` or `... test`. After sourcing `env.dev.sh` or `env.prod.sh`, call `alb-manage migrate`, `alb-manage test`, `alb-manage createsuperuser`, and `albins_import_songs` for seeding. Use `alb-pnpm <command>` (e.g. `alb-pnpm lint`) for frontend tooling from the repo root.
-- Work on the frontend without Docker: `cd frontend && npm install && npm run dev` (Vite serves on port 5173 by default).
-- Direct backend development: `cd backend && python manage.py runserver 0.0.0.0:8000` after sourcing `env.dev.sh` (or exporting the vars from `.env.dev`).
+- `pnpm install` installs dependencies. Use `pnpm install --frozen-lockfile` to match CI.
+- `pnpm dev` starts the Next.js dev server on http://localhost:3000, backed by wrangler's local platform proxy and the local D1 file under `.wrangler/state`.
+- `pnpm migrate` applies the checked-in migrations to the local D1 database; `pnpm migrate:create --name add-something` generates a new one.
+- `pnpm import:songs` seeds the local database from the corpus export. It is idempotent, and `SONGS_EXPORT_PATH` overrides the default input path.
+- `pnpm typecheck` runs `tsc --noEmit`, `pnpm build` runs `next build --webpack`, and `pnpm build:worker` runs the OpenNext build that writes `.open-next/worker.js`. `pnpm preview` builds and serves the Worker bundle locally.
+- `pnpm generate:types` regenerates `src/payload-types.ts` and `pnpm generate:importmap` regenerates the admin import map. Never edit either by hand.
+- CI runs `pnpm install --frozen-lockfile`, `pnpm typecheck` and `pnpm build` on pull requests and on pushes to `main`.
 
 ## Coding Style & Naming Conventions
-- Python code should follow PEP 8 with 4-space indentation; name Django apps, models, and serializers in `snake_case` modules and `PascalCase` classes. Keep business logic inside the relevant app (e.g., `songs/services.py` if added) rather than the project settings module.
-- TypeScript uses 2-space indentation, React components in `PascalCase`, hooks in `useCamelCase`. Re-export shared UI primitives from `frontend/src/components/` to avoid deep relative imports.
-- Run `pnpm lint` (or `alb-pnpm lint`) to enforce the configured ESLint rules before pushing changes.
+- TypeScript with two-space indentation, single quotes and no semicolons, matching the existing sources. Payload collection files are `PascalCase` (`src/collections/Songs.ts`), helper modules are `kebab-case` or lowercase (`src/lib/html-to-lexical.ts`, `src/lib/session.ts`), and route files stay `route.ts` or `page.tsx`.
+- App code imports through the `@/*` alias for `src/` and `@payload-config` for the Payload config rather than deep relative paths. Scripts under `scripts/` use relative imports, because they run through the Payload CLI instead of the Next.js bundler.
+- Keep Workers runtime constraints in mind: workerd has no Node.js filesystem, so anything touching `fs`, a local path or the Payload CLI belongs in `scripts/` or in the platform proxy branch of `src/payload.config.ts`, never in request handling.
+- There is no linter configured. Match the surrounding code and rely on `pnpm typecheck` and the build.
 
 ## Testing Guidelines
-- Prefer app-level test modules (`backend/api/tests.py`, et al.). Organize larger suites as packages (`tests/`) with descriptive filenames like `test_song_permissions.py`.
-- Use Django's `TestCase` for database-backed tests and Channels' async test utilities when covering websocket flows. Include fixtures or factory methods near the tests that need them.
-- Execute `docker compose -f docker-compose.dev.yml run --rm backend python manage.py test` and ensure the suite passes before opening a pull request.
+- No unit test runner is configured yet. Verify a change by running `pnpm typecheck` and `pnpm build`, then exercising the routes against `pnpm dev`.
+- The client routes read `localStorage`, so a plain HTTP request renders only the loading or redirect state. Drive them with a browser that has a session object under `auth` in `localStorage` to see the content. Serve the dev server as `localhost`: Next blocks its assets for an origin that is not in `allowedDevOrigins`, so `127.0.0.1` renders server-side HTML with no client JavaScript.
+- For the gated routes, assert the status codes from `src/app/api/session/route.ts` and `src/app/api/songbook/route.ts`: `401` without a valid session token, `403` for a challenge failure, `500` when `SESSION_SIGNING_SECRET` or `TURNSTILE_SECRET` is missing. Cloudflare's always-pass Turnstile test keys produce `403` by design, because they return no `action`.
+- When a change touches the import flow, rerun `pnpm migrate` and `pnpm import:songs` and confirm the reported song and category counts.
+- If you add a test runner, wire it into `.github/workflows/checks.yml` in the same pull request.
 
 ## Commit & Pull Request Guidelines
-- Follow the existing history by writing concise, present-tense summaries that group backend and frontend work when relevant (e.g., `backend auth cleanup & frontend login polish`). Reference tickets in the body, not the subject.
-- Each PR should include: a short problem statement, a bullet summary of changes, testing notes (commands run), and screenshots or GIFs for UI updates. Link related issues and call out migration or data-seeding steps explicitly.
+- Write concise, present-tense commit subjects that say what the change does, and reference tickets in the body rather than the subject. Keep commits small and intentional.
+- Each PR should include: a short problem statement, a bullet summary of changes, and testing notes naming the commands run and their observed results.
+- Call out schema and data steps explicitly: whether `pnpm migrate:create` produced a new migration, and whether `pnpm import:songs` has to run against a fresh database.
+- Include screenshots or a short clip for changes to the start screen or the admin panel.
 
 ## Environment & Configuration
-- Root-level `.env.dev`/`.env.prod` hold sample configuration (including `SERVICE_ACCOUNT_USERNAME`/`SERVICE_ACCOUNT_EMAIL` for anonymous login and default `DJANGO_ALLOWED_HOSTS`). Source `env.dev.sh` or `env.prod.sh` to export variables and load shell aliases (`alb`, `alb-manage`, `alb-pnpm`, `albins_import_songs`). Each script wires those aliases to its own compose file; add additional hosts (e.g., LAN IPs) to `DJANGO_ALLOWED_HOSTS` as needed.
-- Database changes require migrations (`python manage.py makemigrations`) checked into the respective app. Document any new ENV vars in both `.env` templates and the PR description.
-- Agents must not handcraft migration files. Ask the user to run `alb-manage makemigrations` when schema changes are needed.
+- `.dev.vars` holds the local secrets and stays gitignored. `.dev.vars.example` documents every variable and is committed; update it whenever a variable is added or removed.
+- `PAYLOAD_SECRET`, `SESSION_SIGNING_SECRET` and `TURNSTILE_SECRET` are secrets and are set with `wrangler secret put` in a deployment. `TURNSTILE_SITE_KEY` and `TURNSTILE_HOSTNAMES` are plain `vars` in `wrangler.jsonc` and are safe to commit.
+- `pnpm dev` reads `.env` rather than `.dev.vars`, so export the same variables in the shell or add a gitignored `.env` when running the dev server.
+- Schema changes require a generated migration under `src/migrations`, checked in with the collection change. Do not handcraft migration files: run `pnpm migrate:create` and review its output.
+- Keep the local `database_id` placeholder in `wrangler.jsonc` out of production. A real deployment replaces it with the id of the D1 database it uses.
