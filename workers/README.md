@@ -116,10 +116,16 @@ with the id of the real D1 database.
 
 ```sh
 pnpm typecheck     # regenerates cloudflare-env.d.ts, then tsc --noEmit
-pnpm build         # payload build, which runs next build
+pnpm build         # next build --webpack
 pnpm build:worker  # opennextjs-cloudflare build
 pnpm preview       # build and serve the Worker bundle locally
 ```
+
+`pnpm build` runs Next.js with webpack rather than Turbopack. Payload asks the
+bundler to keep `drizzle-kit` external, because it is a dependency of the SQL
+adapters rather than a direct dependency of this app, and Turbopack emits that
+external under a mangled module name that the OpenNext bundler then cannot
+resolve.
 
 `wrangler.jsonc` intentionally has no route or custom domain yet, so nothing is
 served from a hostname until that is added.
