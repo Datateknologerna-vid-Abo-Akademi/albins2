@@ -1,8 +1,7 @@
 import { convertLexicalToHTML } from '@payloadcms/richtext-lexical/html'
-import { getPayload } from 'payload'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 
-import config from '@payload-config'
 import { readSessionToken, verifySessionToken } from '@/lib/session'
 
 // Never statically generated and never cached.
@@ -14,8 +13,14 @@ const NO_STORE = { 'Cache-Control': 'no-store' } as const
 const unauthorized = (detail: string) =>
   NextResponse.json({ detail }, { headers: NO_STORE, status: 401 })
 
-const toNullableNumber = (value: number | null | undefined): number | null =>
-  typeof value === 'number' ? value : null
+/** D1 hands back SQLite numerics, which can arrive as strings or null. */
+function toNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
 
 type LexicalState = Parameters<typeof convertLexicalToHTML>[0]['data']
 
@@ -37,10 +42,41 @@ function toSongbookHtml(data: LexicalState): string {
     .replace(EMPTY_PARAGRAPH, '<p></p>')
 }
 
+function contentToHtml(content: unknown): string | null {
+  if (typeof content !== 'string' || content.length === 0) {
+    return null
+  }
+
+  try {
+    return toSongbookHtml(JSON.parse(content) as LexicalState)
+  } catch (error) {
+    // A song whose stored Lexical state cannot be read still has to be
+    // servable, and an empty body is better than failing the whole songbook.
+    console.error(`[api/songbook] could not render song content: ${String(error)}`)
+    return null
+  }
+}
+
+type SongbookRow = { id: number; name: string }
+type CategoryRow = { id: number; name: string; order: unknown }
+type SongRow = {
+  id: number
+  title: string
+  melody: string | null
+  author: string | null
+  content: string | null
+  page_number: unknown
+  negative_page_number: unknown
+  order: unknown
+  category_id: number
+}
+
 export async function GET(request: Request) {
   const sessionSecret = process.env.SESSION_SIGNING_SECRET
   if (!sessionSecret) {
-    console.error('[api/songbook] SESSION_SIGNING_SECRET is not set, refusing to serve the songbook.')
+    console.error(
+      '[api/songbook] SESSION_SIGNING_SECRET is not set, refusing to serve the songbook.',
+    )
     return NextResponse.json(
       { detail: 'Session signing is not configured.' },
       { headers: NO_STORE, status: 500 },
@@ -57,86 +93,73 @@ export async function GET(request: Request) {
     return unauthorized('Invalid or expired token.')
   }
 
-  const payload = await getPayload({ config })
+  const { env } = await getCloudflareContext({ async: true })
+  const db = env.DB
 
-  // The gate is the signed session token above, so the Local API reads run
-  // with overrideAccess (the default). Payload's own REST and GraphQL read
-  // access stays restricted to authenticated admin users.
-  const songbooks = await payload.find({
-    collection: 'songbooks',
-    depth: 0,
-    limit: 2,
-    pagination: false,
-    sort: 'id',
-  })
+  // Read D1 directly rather than through the Payload Local API. Payload's
+  // initialisation is the largest cost on a cold isolate, and this is the one
+  // public read path, so it is worth going straight to the tables. The shape
+  // below is the contract the client was built against, and the collection
+  // definitions in src/collections are what write these columns.
+  const songbooks = await db
+    .prepare('select id, name from songbooks order by id asc limit 2')
+    .all<SongbookRow>()
 
-  if (songbooks.totalDocs === 0) {
-    return NextResponse.json(
-      { detail: 'Songbook not found.' },
-      { headers: NO_STORE, status: 404 },
-    )
+  const bookRows = songbooks.results ?? []
+  if (bookRows.length === 0) {
+    return NextResponse.json({ detail: 'Songbook not found.' }, { headers: NO_STORE, status: 404 })
   }
-
-  if (songbooks.totalDocs > 1) {
+  if (bookRows.length > 1) {
     return NextResponse.json(
       { detail: 'Multiple songbooks found. Please ensure only one songbook exists.' },
       { headers: NO_STORE, status: 409 },
     )
   }
 
-  const songbook = songbooks.docs[0]
+  const songbook = bookRows[0]
 
-  const categories = await payload.find({
-    collection: 'categories',
-    depth: 0,
-    limit: 0,
-    pagination: false,
-    sort: ['order', 'id'],
-    where: { songbook: { equals: songbook.id } },
-  })
+  const [categories, songs] = await Promise.all([
+    db
+      .prepare(
+        'select id, name, "order" from categories where songbook_id = ?1 order by "order" asc, id asc',
+      )
+      .bind(songbook.id)
+      .all<CategoryRow>(),
+    db
+      .prepare(
+        'select id, title, melody, author, content, page_number, negative_page_number, "order", category_id from songs where category_id in (select id from categories where songbook_id = ?1) order by "order" asc, id asc',
+      )
+      .bind(songbook.id)
+      .all<SongRow>(),
+  ])
 
-  const songsByCategory = new Map<number, CategorySong[]>()
-  const categoryIds = categories.docs.map((category) => category.id)
+  const categoryRows = categories.results ?? []
+  const nameById = new Map(categoryRows.map((category) => [category.id, category.name]))
+  const songsByCategory = new Map<number, unknown[]>()
 
-  if (categoryIds.length > 0) {
-    const songs = await payload.find({
-      collection: 'songs',
-      depth: 0,
-      limit: 0,
-      pagination: false,
-      sort: ['order', 'id'],
-      where: { category: { in: categoryIds } },
+  for (const song of songs.results ?? []) {
+    const bucket = songsByCategory.get(song.category_id) ?? []
+    bucket.push({
+      audio: null,
+      author: song.author ?? null,
+      category: song.category_id,
+      category_name: nameById.get(song.category_id) ?? '',
+      content: contentToHtml(song.content),
+      id: song.id,
+      melody: song.melody ?? null,
+      negative_page_number: toNullableNumber(song.negative_page_number),
+      order: toNullableNumber(song.order),
+      page_number: toNullableNumber(song.page_number),
+      title: song.title,
     })
-
-    for (const song of songs.docs) {
-      const categoryId = toRelationshipId(song.category)
-      if (categoryId === null) {
-        continue
-      }
-
-      const bucket = songsByCategory.get(categoryId) ?? []
-      bucket.push({
-        audio: null,
-        author: song.author ?? null,
-        category: categoryId,
-        category_name: nameOf(categories.docs, categoryId),
-        content: song.content ? toSongbookHtml(song.content) : null,
-        id: song.id,
-        melody: song.melody ?? null,
-        negative_page_number: toNullableNumber(song.negativePageNumber),
-        order: toNullableNumber(song.order),
-        page_number: toNullableNumber(song.pageNumber),
-        title: song.title,
-      })
-      songsByCategory.set(categoryId, bucket)
-    }
+    songsByCategory.set(song.category_id, bucket)
   }
 
   return NextResponse.json(
     {
       id: songbook.id,
       name: songbook.name,
-      categories: categories.docs.map((category) => ({
+      categories: categoryRows.map((category) => ({
         id: category.id,
         name: category.name,
         order: toNullableNumber(category.order),
@@ -145,36 +168,4 @@ export async function GET(request: Request) {
     },
     { headers: NO_STORE },
   )
-}
-
-type CategorySong = {
-  id: number
-  category_name: string
-  title: string
-  melody: string | null
-  author: string | null
-  content: string | null
-  audio: null
-  category: number
-  page_number: number | null
-  negative_page_number: number | null
-  order: number | null
-}
-
-type RelationshipValue = number | { id: number } | null | undefined
-
-function toRelationshipId(value: RelationshipValue): number | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value === 'object') {
-    return value.id ?? null
-  }
-
-  return value
-}
-
-function nameOf(categories: { id: number; name: string }[], id: number | null): string {
-  return categories.find((category) => category.id === id)?.name ?? ''
 }

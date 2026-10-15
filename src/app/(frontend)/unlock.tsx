@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import Albin from './components/Albin'
-import { clearCategoryCache, fetchCategories, getCachedCategories } from './services/categoryClient'
+import { fetchCategories, getCachedCategories } from './services/categoryClient'
 
 const TURNSTILE_SCRIPT_ID = 'cf-turnstile-script'
 const TURNSTILE_SCRIPT_SRC =
@@ -171,10 +171,11 @@ export default function Unlock({ siteKey }: { siteKey: string }) {
           router.push('/categories')
         }
 
-        if (typeof navigator !== 'undefined' && navigator.onLine) {
-          clearCategoryCache()
-        }
-
+        // The categories are refetched below, which replaces whatever is
+        // cached. Deliberately not clearing first: the cache is not per-user
+        // and holds nothing private, so dropping it only guaranteed a loading
+        // skeleton before the refetch landed. /categories now renders the
+        // cached copy immediately and the fetch updates it in place.
         try {
           await fetchCategories(data.token)
         } catch (prefetchError) {
@@ -201,6 +202,12 @@ export default function Unlock({ siteKey }: { siteKey: string }) {
 
   useEffect(() => {
     let cancelled = false
+
+    // The visitor spends a moment on this screen before pressing the button.
+    // Fetching the categories route chunk now means its download overlaps that
+    // pause and the Turnstile round trip, instead of starting only once
+    // /api/session has answered.
+    router.prefetch('/categories')
 
     loadTurnstile()
       .then((turnstile) => {
@@ -231,7 +238,7 @@ export default function Unlock({ siteKey }: { siteKey: string }) {
     return () => {
       cancelled = true
     }
-  }, [siteKey, submit])
+  }, [router, siteKey, submit])
 
   const handleClick = () => {
     if (status === 'unlocked' || status === 'submitting' || status === 'solving') {
