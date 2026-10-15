@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "albins",
+  "main": ".open-next/worker.js",
+  // OpenNext writes the Worker bundle and static assets here.
+  "compatibility_date": "2025-08-15",
+  "compatibility_flags": [
+    // Node.js APIs used by Payload and Next.js.
+    "nodejs_compat",
+    // Outbound fetch does not see private addresses.
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // The id is a local placeholder. Replace it with the real id once a D1
+  // database exists; local development and local migrations do not use it.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "albins",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ]
+}

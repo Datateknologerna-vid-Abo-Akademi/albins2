@@ -1,0 +1,11 @@
+# Copy this file to `.dev.vars` (gitignored) for `pnpm preview` and other
+# wrangler driven runs, or export the same variables for `pnpm dev`.
+#
+# Generate secrets with `openssl rand -hex 32`.
+PAYLOAD_SECRET="replace-with-a-random-string"
+SESSION_SIGNING_SECRET="replace-with-a-random-string"
+# Optional. Without it the session route issues tokens without a Turnstile
+# challenge, which is only meant for local development.
+TURNSTILE_SECRET_KEY=""
+# Optional. Comma separated list of hostnames that siteverify must report.
+TURNSTILE_HOSTNAMES=""
