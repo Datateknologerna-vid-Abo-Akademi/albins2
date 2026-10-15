@@ -210,6 +210,11 @@ export default function Unlock({ siteKey }: { siteKey: string }) {
 
         widgetIdRef.current = turnstile.render(containerRef.current, {
           action: ACTION,
+          // Managed mode only asks for interaction when Cloudflare judges the
+          // visitor risky. interaction-only keeps the widget out of the layout
+          // entirely until that happens, so an ordinary visit looks like no
+          // challenge at all while the token gate still runs.
+          appearance: 'interaction-only',
           callback: (token: string) => {
             tokenRef.current = token
             if (pendingRef.current) {
