@@ -11,6 +11,11 @@ node_modules/
 tsconfig.tsbuildinfo
 next-env.d.ts
 
+# Wrangler's default output name. `pnpm generate:cloudflare-types` writes
+# cloudflare-env.d.ts instead, which is committed, so a bare `wrangler types`
+# would otherwise add a duplicate of it.
+worker-configuration.d.ts
+
 # Local secrets and local environment files.
 .dev.vars
 .env
