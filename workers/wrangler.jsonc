@@ -17,6 +17,15 @@
   "observability": {
     "enabled": true
   },
+  // Public configuration. TURNSTILE_SECRET is not here: it is a secret and is
+  // set with `wrangler secret put TURNSTILE_SECRET`.
+  "vars": {
+    // Rendered into the start screen. Public and safe to commit.
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFXzEiqLnNlrl6Y1",
+    // Hostnames siteverify must report. Never include localhost, 127.0.0.1 or
+    // example.com here.
+    "TURNSTILE_HOSTNAMES": "albins.app,www.albins.app"
+  },
   // The id is a local placeholder. Replace it with the real id once a D1
   // database exists; local development and local migrations do not use it.
   "d1_databases": [

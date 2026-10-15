@@ -9,8 +9,17 @@ export const revalidate = 0
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 const TURNSTILE_TIMEOUT_MS = 10_000
 const MAX_TURNSTILE_TOKEN_LENGTH = 2048
+const EXPECTED_TURNSTILE_ACTION = 'session'
 
 const NO_STORE = { 'Cache-Control': 'no-store' } as const
+
+/**
+ * One response for every challenge failure, so a caller cannot tell which check
+ * rejected it. The reason is logged server side instead.
+ */
+function forbidden() {
+  return NextResponse.json({ detail: 'Forbidden.' }, { headers: NO_STORE, status: 403 })
+}
 
 /** Reads the Turnstile response token from JSON, form data or a query string. */
 async function readTurnstileToken(request: Request): Promise<string | null> {
@@ -39,8 +48,12 @@ async function readTurnstileToken(request: Request): Promise<string | null> {
 }
 
 /**
- * Verifies the Turnstile token against siteverify. Fails closed on a network
- * error or a non-2xx response.
+ * Verifies the Turnstile token against siteverify.
+ *
+ * Fails closed: a network error or a non-2xx response throws, and the caller
+ * turns that into a 403. The hostname allowlist is required rather than
+ * optional, so an unset TURNSTILE_HOSTNAMES rejects instead of accepting any
+ * hostname that siteverify happens to report.
  */
 async function verifyTurnstile(secret: string, token: string, request: Request) {
   const body = new URLSearchParams({ response: token, secret })
@@ -64,6 +77,7 @@ async function verifyTurnstile(secret: string, token: string, request: Request) 
 
   const outcome = (await response.json()) as {
     success?: boolean
+    action?: string
     hostname?: string
     'error-codes'?: string[]
   }
@@ -73,10 +87,23 @@ async function verifyTurnstile(secret: string, token: string, request: Request) 
     .map((hostname) => hostname.trim())
     .filter(Boolean)
 
-  const hostnameAllowed =
-    expectedHostnames.length === 0 || expectedHostnames.includes(outcome.hostname ?? '')
+  const reasons: string[] = []
 
-  return { allowed: Boolean(outcome.success) && hostnameAllowed, outcome }
+  if (!outcome.success) {
+    reasons.push('siteverify rejected the token')
+  }
+
+  if (expectedHostnames.length === 0) {
+    reasons.push('TURNSTILE_HOSTNAMES is not configured')
+  } else if (!expectedHostnames.includes(outcome.hostname ?? '')) {
+    reasons.push(`unexpected hostname ${JSON.stringify(outcome.hostname ?? '')}`)
+  }
+
+  if (outcome.action !== EXPECTED_TURNSTILE_ACTION) {
+    reasons.push(`unexpected action ${JSON.stringify(outcome.action ?? '')}`)
+  }
+
+  return { allowed: reasons.length === 0, outcome, reasons }
 }
 
 export async function POST(request: Request) {
@@ -89,40 +116,38 @@ export async function POST(request: Request) {
     )
   }
 
-  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY
-
-  if (turnstileSecret) {
-    const responseToken = await readTurnstileToken(request)
-
-    if (!responseToken || responseToken.length > MAX_TURNSTILE_TOKEN_LENGTH) {
-      return NextResponse.json(
-        { detail: 'A Turnstile response token is required.' },
-        { headers: NO_STORE, status: 400 },
-      )
-    }
-
-    try {
-      const { allowed, outcome } = await verifyTurnstile(turnstileSecret, responseToken, request)
-      if (!allowed) {
-        console.warn(
-          `[api/session] Turnstile verification failed: ${JSON.stringify(outcome['error-codes'] ?? [])}`,
-        )
-        return NextResponse.json(
-          { detail: 'Turnstile verification failed.' },
-          { headers: NO_STORE, status: 403 },
-        )
-      }
-    } catch (error) {
-      console.error(`[api/session] Turnstile verification error: ${String(error)}`)
-      return NextResponse.json(
-        { detail: 'Turnstile verification is unavailable.' },
-        { headers: NO_STORE, status: 403 },
-      )
-    }
-  } else {
-    console.warn(
-      '[api/session] TURNSTILE_SECRET_KEY is not set, issuing a session token without a Turnstile challenge. Set it before deploying.',
+  const turnstileSecret = process.env.TURNSTILE_SECRET
+  if (!turnstileSecret) {
+    console.error(
+      '[api/session] TURNSTILE_SECRET is not set, refusing to issue a token. Use the Turnstile test keys for local development instead of disabling the challenge.',
     )
+    return NextResponse.json(
+      { detail: 'Turnstile verification is not configured.' },
+      { headers: NO_STORE, status: 500 },
+    )
+  }
+
+  const responseToken = await readTurnstileToken(request)
+  if (!responseToken || responseToken.length > MAX_TURNSTILE_TOKEN_LENGTH) {
+    return forbidden()
+  }
+
+  try {
+    const { allowed, outcome, reasons } = await verifyTurnstile(
+      turnstileSecret,
+      responseToken,
+      request,
+    )
+
+    if (!allowed) {
+      console.warn(
+        `[api/session] Turnstile rejected the request: ${reasons.join('; ')}; error-codes=${JSON.stringify(outcome['error-codes'] ?? [])}`,
+      )
+      return forbidden()
+    }
+  } catch (error) {
+    console.error(`[api/session] Turnstile verification error: ${String(error)}`)
+    return forbidden()
   }
 
   const session = await createSessionToken(sessionSecret)

@@ -1,11 +1,30 @@
 # Copy this file to `.dev.vars` (gitignored) for `pnpm preview` and other
-# wrangler driven runs, or export the same variables for `pnpm dev`.
+# wrangler driven runs. `pnpm dev` reads `.env` instead, so keep the same
+# variables there, or export them in the shell.
 #
-# Generate secrets with `openssl rand -hex 32`.
+# Generate the random secrets with `openssl rand -hex 32`.
 PAYLOAD_SECRET="replace-with-a-random-string"
 SESSION_SIGNING_SECRET="replace-with-a-random-string"
-# Optional. Without it the session route issues tokens without a Turnstile
-# challenge, which is only meant for local development.
-TURNSTILE_SECRET_KEY=""
-# Optional. Comma separated list of hostnames that siteverify must report.
-TURNSTILE_HOSTNAMES=""
+
+# Verifies the Turnstile response in POST /api/session. Required: the route
+# fails closed with a 500 when it is missing and never issues a token.
+#
+# To get a token locally you need the widget's real secret from the Cloudflare
+# dashboard, and `localhost` and `127.0.0.1` registered as hostnames on the
+# widget. Cloudflare's test keys cannot pass the gate: they return no `action`,
+# so the action check rejects them by design. See the README.
+TURNSTILE_SECRET=""
+
+# The public site key rendered into the start screen. Use the widget's real
+# site key so the widget renders on a registered local hostname.
+#
+# To exercise only the rejection paths, set this to the always-pass test key
+# `1x00000000000000000000AA`, set TURNSTILE_SECRET to
+# `1x0000000000000000000000000000000AA` and TURNSTILE_HOSTNAMES to
+# `example.com`. POST /api/session then always returns 403.
+TURNSTILE_SITE_KEY="0x4AAAAAAFXzEiqLnNlrl6Y1"
+
+# Hostnames that siteverify must report. Required: an empty list rejects every
+# request. List only the hostnames you develop on, and never ship localhost or
+# 127.0.0.1 in a deployed value.
+TURNSTILE_HOSTNAMES="localhost,127.0.0.1"

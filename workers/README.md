@@ -26,12 +26,24 @@ export PAYLOAD_SECRET="$(openssl rand -hex 32)"
 export SESSION_SIGNING_SECRET="$(openssl rand -hex 32)"
 ```
 
+`.dev.vars.example` suggests the widget's real site key and secret, plus
+`localhost` and `127.0.0.1` as the reported hostnames. Passing the gate locally
+needs all three, which means the widget must have `localhost` registered.
+
+To exercise only the rejection paths, Cloudflare's always-pass test keys work:
+set `TURNSTILE_SECRET` to `1x0000000000000000000000000000000AA`,
+`TURNSTILE_SITE_KEY` to `1x00000000000000000000AA` and `TURNSTILE_HOSTNAMES` to
+`example.com`. The gate then always returns 403, because the test keys return
+`success: true` and `hostname: "example.com"` but no `action`, so the action
+check rejects them. That is the intended behaviour, not a bug.
+
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `PAYLOAD_SECRET` | yes | Signs admin sessions and tokens. |
 | `SESSION_SIGNING_SECRET` | yes | HMAC key for the `/api/songbook` session token. |
-| `TURNSTILE_SECRET_KEY` | no | Enables Turnstile verification in `POST /api/session`. Without it the route issues a token without a challenge and logs a warning, which is only meant for local development. |
-| `TURNSTILE_HOSTNAMES` | no | Comma separated hostnames that siteverify must report. Checked only when set. |
+| `TURNSTILE_SECRET` | yes | Verifies the Turnstile response token in `POST /api/session`. A secret: set it with `wrangler secret put TURNSTILE_SECRET`. The route fails closed without it and never issues a token. |
+| `TURNSTILE_SITE_KEY` | yes | Public site key rendered into the start screen. A plain var in `wrangler.jsonc`. |
+| `TURNSTILE_HOSTNAMES` | yes | Comma separated hostnames that siteverify must report. A plain var in `wrangler.jsonc`. An empty list rejects every request rather than allowing any hostname. |
 
 ## Local development
 
@@ -66,12 +78,42 @@ it runs through `payload run` and is never imported by the Worker.
 
 | Route | Description |
 | --- | --- |
-| `POST /api/session` | Verifies a Turnstile token when `TURNSTILE_SECRET_KEY` is set, then returns `{ "token": "...", "expiry": "<ISO 8601>" }`. The token is an HMAC-SHA256 signed, stateless session token valid for 12 hours. |
+| `POST /api/session` | Requires a valid Turnstile response token, then returns `{ "token": "...", "expiry": "<ISO 8601>" }`. The token is an HMAC-SHA256 signed, stateless session token valid for 12 hours. |
 | `GET /api/songbook` | Requires `Authorization: Bearer <token>`. Returns the songbook with its categories and songs in the shape the client expects (`category_name`, `audio`, `page_number`, `negative_page_number`). Responds `401` with `{"detail": "..."}` for a missing, invalid or expired token. |
 | `GET /admin` | Payload admin panel. The first user created there becomes an admin. |
 | `/api/*` | Payload's own REST and GraphQL API. |
 
 Both custom routes send `Cache-Control: no-store` and are dynamic.
+
+## Turnstile
+
+`POST /api/session` is gated on a Cloudflare Turnstile challenge, so a script
+that calls the API directly cannot obtain a session token. The start screen
+solves the challenge and posts the resulting `cf-turnstile-response` token.
+
+The server requires all three of:
+
+- `success === true` from siteverify
+- `action === "session"`, matching the widget's `data-action`
+- a reported `hostname` present in `TURNSTILE_HOSTNAMES`
+
+It fails closed. A missing token, an unexpected action, an unexpected hostname,
+an unconfigured allowlist, a network error, a non-2xx response and a missing
+`TURNSTILE_SECRET` all refuse to issue a token, and every challenge failure
+returns the same `403 {"detail": "Forbidden."}` so a caller cannot learn which
+check rejected it. The reason is logged server side only. Turnstile response
+tokens are single use, so the client resets the widget before a retry.
+
+`TURNSTILE_SITE_KEY` and `TURNSTILE_HOSTNAMES` are plain `vars`. Only the secret
+is a secret:
+
+```sh
+wrangler secret put TURNSTILE_SECRET
+```
+
+The widget must also have `albins.app` and `www.albins.app` registered as
+hostnames. Never put `localhost`, `127.0.0.1` or `example.com` in a deployed
+`TURNSTILE_HOSTNAMES` value.
 
 ## Access control
 
