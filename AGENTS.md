@@ -2,9 +2,9 @@
 
 ## Project Structure & Module Organization
 - This repository is the whole Albins service: a Payload CMS 3 and Next.js 16 app deployed to Cloudflare Workers with a D1 database. There is no separate API or client project.
-- `src/app/(frontend)/` holds the public start screen and its styles. `src/app/(payload)/` holds the Payload admin panel and its REST and GraphQL routes. `src/app/api/session/` and `src/app/api/songbook/` hold the two custom routes.
+- `src/app/(frontend)/` holds the public client: the start screen, the `categories`, `songs`, `search` and `song/[id]` routes, the `not-found.tsx` redirect, the ported modules under `components/`, `services/` and `utils/`, and the stylesheets under `styles/`. `src/app/(payload)/` holds the Payload admin panel and its REST and GraphQL routes. `src/app/api/session/` and `src/app/api/songbook/` hold the two custom routes.
 - `src/collections/` defines the Payload collections, `src/access/` the shared access functions, `src/lib/` the signing and HTML conversion helpers, and `src/migrations/` the checked-in D1 migrations.
-- `scripts/` holds local and CI tooling; `scripts/import-songs.ts` seeds D1 from `.migration/songs-export.json` (gitignored, read-only production export). `public/` holds static assets such as the Albin logo.
+- `scripts/` holds local and CI tooling; `scripts/import-songs.ts` seeds D1 from `.migration/songs-export.json` (gitignored, read-only production export). `public/` holds static assets such as the Albin logo, the offline page and the service worker.
 - `wrangler.jsonc` is the Worker configuration, `open-next.config.ts` the OpenNext build config, and `.github/workflows/checks.yml` the only CI workflow.
 
 ## Build, Test, and Development Commands
@@ -24,6 +24,7 @@
 
 ## Testing Guidelines
 - No unit test runner is configured yet. Verify a change by running `pnpm typecheck` and `pnpm build`, then exercising the routes against `pnpm dev`.
+- The client routes read `localStorage`, so a plain HTTP request renders only the loading or redirect state. Drive them with a browser that has a session object under `auth` in `localStorage` to see the content. Serve the dev server as `localhost`: Next blocks its assets for an origin that is not in `allowedDevOrigins`, so `127.0.0.1` renders server-side HTML with no client JavaScript.
 - For the gated routes, assert the status codes from `src/app/api/session/route.ts` and `src/app/api/songbook/route.ts`: `401` without a valid session token, `403` for a challenge failure, `500` when `SESSION_SIGNING_SECRET` or `TURNSTILE_SECRET` is missing. Cloudflare's always-pass Turnstile test keys produce `403` by design, because they return no `action`.
 - When a change touches the import flow, rerun `pnpm migrate` and `pnpm import:songs` and confirm the reported song and category counts.
 - If you add a test runner, wire it into `.github/workflows/checks.yml` in the same pull request.

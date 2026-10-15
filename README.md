@@ -84,7 +84,7 @@ Worker.
 
 | Route | Description |
 | --- | --- |
-| `GET /` | Public start screen. Renders the Turnstile widget with `TURNSTILE_SITE_KEY`, then stores the session token it receives. |
+| `GET /` | Public start screen: the Albin logo, the button that solves the Turnstile challenge and `POST /api/session` with the resulting `cf-turnstile-response` token, then stores the session token it receives under `auth` in `localStorage`. |
 | `POST /api/session` | Requires a valid Turnstile response token, then returns `{ "token": "...", "expiry": "<ISO 8601>" }`. The token is an HMAC-SHA256 signed, stateless session token valid for 12 hours. |
 | `GET /api/songbook` | Requires `Authorization: Bearer <token>`. Returns the songbook with its categories and songs, using the field names `category_name`, `audio`, `page_number` and `negative_page_number`. Responds `401` with `{"detail": "..."}` for a missing, invalid or expired token. |
 | `GET /admin` | Payload admin panel. The first user created there becomes an admin. |
@@ -92,6 +92,60 @@ Worker.
 
 `/api/session` and `/api/songbook` send `Cache-Control: no-store` and are
 dynamic.
+
+## Frontend
+
+`src/app/(frontend)/` serves the whole public client. It is the client that used
+to live in the Vite application, carried across unchanged: the same CSS, the
+same markup, the same swipe and peek engine, the same ranked search and the same
+`localStorage` layer. Only the routing is translated, from react-router to App
+Router.
+
+| Route | File |
+| --- | --- |
+| `/` | `src/app/(frontend)/page.tsx`, rendering `unlock.tsx` |
+| `/categories` | `src/app/(frontend)/categories/page.tsx` |
+| `/songs?category=NAME` | `src/app/(frontend)/songs/page.tsx` |
+| `/search` | `src/app/(frontend)/search/page.tsx` |
+| `/song/[id]` | `src/app/(frontend)/song/[id]/page.tsx` |
+| everything else | `src/app/(frontend)/not-found.tsx`, which redirects to `/` |
+
+`src/app/(frontend)/components/`, `services/` and `utils/` hold the ported
+modules, and `styles/` holds the stylesheets. `src/app/(frontend)/styles.css` is
+the single global entry point and imports them in the order the old client
+applied them.
+
+The client talks to `GET /api/songbook` with `Authorization: Token <token>` and
+caches the result in `localStorage` under `albins:categories` for 12 hours. It
+reads the session it stored under `auth`; a page without a token sends the
+visitor back to `/`.
+
+Every route except `/` reads that session on the client, so a plain HTTP request
+returns the server-rendered loading or redirect state. Open the routes in a
+browser to see content, and serve the dev server as `localhost`: Next blocks its
+assets for an origin that is not listed in `allowedDevOrigins`, so
+`127.0.0.1` renders the HTML without client JavaScript.
+
+## Offline support
+
+`public/service-worker.js` and `public/offline.html` are the worker and the
+fallback page the old client shipped. The layout registers the worker in
+production builds only, as the old client did.
+
+The precache list had to change, because it named files this app does not serve:
+
+| Old entry | Reason | New entry |
+| --- | --- | --- |
+| `/index.html` | No such file; the route group serves `/` | `/` |
+| `/favicon.ico` | No such file; the icon is `/Albin.svg` | `/Albin.svg` |
+| `/` | Unchanged | `/` |
+| `/offline.html` | Unchanged | `/offline.html` |
+| - | The other client routes | `/categories`, `/search` |
+
+The navigation fallback uses `/` as its shell, for the same reason. The runtime
+cache no longer matches `/api/songbook/` with a trailing slash, because the
+route is `GET /api/songbook`. The old client's cache names, its admin path
+bypass, its asset cache and its 20 entry runtime cache limit are unchanged.
 
 ## Turnstile
 
