@@ -1,0 +1,50 @@
+:root {
+    /* Color Palette */
+    --color-primary: #377fc4;
+    --color-secondary: #020617;
+    --color-accent: #2d6fab;
+    --color-text: #f4faff;
+    --color-text-secondary: #b1cbe4;
+    --color-background: #0b1020;
+    --color-card: rgba(55, 127, 196, 0.95);
+    --color-card-hover: rgba(78, 149, 216, 1);
+    --color-card-overlay: rgba(2, 6, 23, 0.92);
+    --gradient-card: linear-gradient(135deg, rgba(55, 127, 196, 0.95), rgb(11, 16, 32));
+    --gradient-card-hover: linear-gradient(135deg, rgba(78, 149, 216, 1), rgba(4, 12, 30, 1));
+    --gradient-footer: linear-gradient(0deg, rgba(2, 6, 23, 0.98), rgba(26, 44, 70, 0.98));
+    
+    /* Typography */
+    --font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    --font-size-base: 16px;
+    --font-size-h1: 2rem;
+    --font-size-h2: 1.25rem;
+    --font-size-body: 1rem;
+    
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    
+    /* Border Radius */
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.1);
+    
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+
+    /* Breakpoints */
+    --breakpoint-sm: 576px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 992px;
+    --breakpoint-xl: 1200px;
+} 
