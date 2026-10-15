@@ -17,6 +17,16 @@
   "observability": {
     "enabled": true
   },
+  // The cutover. A route intercepts requests for the zone before they reach the
+  // origin, so the apex keeps its existing DNS record and the cluster keeps
+  // running as the rollback path: remove this route and traffic goes straight
+  // back to it.
+  "routes": [
+    {
+      "pattern": "albins.app/*",
+      "zone_name": "albins.app"
+    }
+  ],
   // Public configuration. TURNSTILE_SECRET is not here: it is a secret and is
   // set with `wrangler secret put TURNSTILE_SECRET`.
   "vars": {
@@ -28,13 +38,12 @@
     // example.com here.
     "TURNSTILE_HOSTNAMES": "albins.app"
   },
-  // The id is a local placeholder. Replace it with the real id once a D1
-  // database exists; local development and local migrations do not use it.
+  // The `albins` D1 database in the Datateknologerna account, region EEUR.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "albins",
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_id": "db96f423-6b52-4848-83ce-7183b22bb79b"
     }
   ]
 }
