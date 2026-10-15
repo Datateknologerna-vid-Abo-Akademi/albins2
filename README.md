@@ -198,6 +198,36 @@ user.
 Writes to content require the `admin` or `editor` role. Creating and deleting
 users requires `admin`, and only an `admin` may change the `roles` field.
 
+## The first user
+
+Payload bootstraps the panel through an unauthenticated first-user flow that is
+available only while the `users` collection is empty, and that flow is **not**
+gated by collection access control. Two consequences matter:
+
+- Create the first user immediately after the first deploy. Until it exists,
+  anyone who finds `/admin` can claim it.
+- The form defaults the role to `editor`, and an editor can neither create users
+  nor change roles, so that default would lock administration out for good. A
+  `beforeChange` hook on `users` therefore forces the first account to
+  `roles: ["admin"]` whatever the request asked for.
+
+## Password hashing on Workers
+
+Payload hashes passwords with PBKDF2 at 600,000 iterations, and workerd refuses
+any count above 100,000, so on Cloudflare **no user can be created or logged in
+at all**. There is no option for it in `auth`, so `patches/payload@3.90.2.patch`
+lowers the constant to the runtime ceiling.
+
+That patch is load-bearing: the stored hash prefix does not record the iteration
+count, so the reader uses the same constant. Removing the patch, or upgrading
+Payload without re-applying it, breaks login for every existing user rather than
+merely weakening it. After any Payload upgrade, check that the constant is
+patched and that `POST /api/users/login` still returns `200`.
+
+Note also that rotating `PAYLOAD_SECRET` does not log anyone out. Payload 3 keeps
+sessions in the `users_sessions` table, so revocation means deleting the session
+row.
+
 ## Collections
 
 - `users`: Payload auth with `email`, `password` and `roles` (`admin`, `editor`).

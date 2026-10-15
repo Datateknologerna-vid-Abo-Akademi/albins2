@@ -4,3 +4,5 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@opennextjs/aws@4.1.11'
   - '@opennextjs/cloudflare@1.20.12'
+patchedDependencies:
+  payload@3.90.2: patches/payload@3.90.2.patch
