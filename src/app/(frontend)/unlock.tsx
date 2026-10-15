@@ -1,6 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+import Albin from './components/Albin'
+import { clearCategoryCache, fetchCategories, getCachedCategories } from './services/categoryClient'
 
 const TURNSTILE_SCRIPT_ID = 'cf-turnstile-script'
 const TURNSTILE_SCRIPT_SRC =
@@ -8,6 +12,9 @@ const TURNSTILE_SCRIPT_SRC =
 
 // Must match EXPECTED_TURNSTILE_ACTION in src/app/api/session/route.ts.
 const ACTION = 'session'
+
+// The old start screen aborted the anonymous login request after five seconds.
+const LOGIN_TIMEOUT_MS = 5000
 
 type Status = 'idle' | 'solving' | 'submitting' | 'unlocked' | 'failed'
 
@@ -60,46 +67,137 @@ function loadTurnstile(): Promise<TurnstileApi> {
   })
 }
 
+/** Reads the stored session, ignoring anything malformed. */
+function getStoredAuth(): { token: string; expiry: string | null } | null {
+  try {
+    const raw = window.localStorage.getItem('auth')
+    if (!raw) {
+      return null
+    }
+
+    const parsed = JSON.parse(raw) as { token?: unknown; expiry?: unknown }
+    if (!parsed || typeof parsed.token !== 'string' || parsed.token.length === 0) {
+      return null
+    }
+
+    return {
+      token: parsed.token,
+      expiry: typeof parsed.expiry === 'string' ? parsed.expiry : null,
+    }
+  } catch {
+    return null
+  }
+}
+
 /**
  * The start screen gate. The visitor presses the button, Turnstile solves a
  * challenge, and the resulting token is exchanged for a session token.
+ *
+ * The markup keeps the classes of the old start screen, and the request
+ * handling keeps its failure behaviour: a five second abort, and a fallback to
+ * the stored session when the request fails but a token and cached categories
+ * already exist.
  */
 export default function Unlock({ siteKey }: { siteKey: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const widgetIdRef = useRef<string | null>(null)
   const tokenRef = useRef<string | null>(null)
   const pendingRef = useRef(false)
+  const isMountedRef = useRef(true)
+  const hasNavigatedRef = useRef(false)
   const [status, setStatus] = useState<Status>('idle')
+  const [hasAlbinFallen, setHasAlbinFallen] = useState(false)
+  const router = useRouter()
 
-  const submit = useCallback(async (token: string) => {
-    tokenRef.current = null
-    pendingRef.current = false
-    setStatus('submitting')
-
-    try {
-      const response = await fetch('/api/session', {
-        body: JSON.stringify({ 'cf-turnstile-response': token }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        setStatus('failed')
-        return
-      }
-
-      const data = (await response.json()) as { token?: string; expiry?: string }
-      if (data.token) {
-        window.localStorage.setItem(
-          'auth',
-          JSON.stringify({ expiry: data.expiry, token: data.token }),
-        )
-      }
-      setStatus('unlocked')
-    } catch {
-      setStatus('failed')
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
     }
   }, [])
+
+  const submit = useCallback(
+    async (token: string) => {
+      tokenRef.current = null
+      pendingRef.current = false
+      hasNavigatedRef.current = false
+      setStatus('submitting')
+
+      // Read the stored session and cache before the request, so a failure can
+      // fall back to them.
+      const storedAuth = getStoredAuth()
+      const cachedCategories = getCachedCategories()
+
+      const navigateWithCachedData = () => {
+        if (hasNavigatedRef.current || !storedAuth?.token || !cachedCategories) {
+          return false
+        }
+
+        hasNavigatedRef.current = true
+        router.push('/categories')
+        return true
+      }
+
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+      const timeoutId = controller
+        ? window.setTimeout(() => {
+            controller.abort()
+          }, LOGIN_TIMEOUT_MS)
+        : null
+
+      try {
+        const response = await fetch('/api/session', {
+          body: JSON.stringify({ 'cf-turnstile-response': token }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          ...(controller ? { signal: controller.signal } : {}),
+        })
+
+        if (!response.ok) {
+          throw new Error('Login failed')
+        }
+
+        const data = (await response.json()) as { token?: string; expiry?: string }
+        const expiry = data.expiry
+          ? new Date(data.expiry).toISOString()
+          : new Date(Date.now() + 3600 * 1000).toISOString()
+
+        if (data.token) {
+          const auth = { token: data.token, expiry }
+          window.localStorage.setItem('auth', JSON.stringify(auth))
+        }
+
+        if (!hasNavigatedRef.current) {
+          hasNavigatedRef.current = true
+          router.push('/categories')
+        }
+
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+          clearCategoryCache()
+        }
+
+        try {
+          await fetchCategories(data.token)
+        } catch (prefetchError) {
+          console.warn('Prefetching categories failed:', prefetchError)
+        }
+
+        if (isMountedRef.current) {
+          setStatus('unlocked')
+        }
+      } catch (error) {
+        console.error('Login error:', error)
+        navigateWithCachedData()
+        if (isMountedRef.current) {
+          setStatus('failed')
+        }
+      } finally {
+        if (timeoutId) {
+          window.clearTimeout(timeoutId)
+        }
+      }
+    },
+    [router],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -155,14 +253,22 @@ export default function Unlock({ siteKey }: { siteKey: string }) {
     setStatus('solving')
   }
 
+  const label =
+    status === 'submitting' || status === 'solving'
+      ? LABELS[status]
+      : hasAlbinFallen || status === 'failed'
+        ? LABELS.failed
+        : LABELS.idle
+
   return (
-    <div>
+    <div className={hasAlbinFallen ? 'start-container start-container--fallen' : 'start-container'}>
+      <Albin onFall={() => setHasAlbinFallen(true)} />
       <button
         disabled={status === 'submitting' || status === 'unlocked'}
         onClick={handleClick}
         type="button"
       >
-        {LABELS[status]}
+        {label}
       </button>
       <p className="sr-only" role="status">
         {status === 'unlocked'
@@ -173,7 +279,7 @@ export default function Unlock({ siteKey }: { siteKey: string }) {
               ? ''
               : 'Kontrollerar.'}
       </p>
-      <div ref={containerRef} />
+      <div className="turnstile-slot" ref={containerRef} />
     </div>
   )
 }

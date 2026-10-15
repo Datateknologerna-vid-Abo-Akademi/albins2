@@ -1,0 +1,102 @@
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Footer from "../components/Footer";
+import SongList from "../components/SongList";
+import { fetchCategories, getCachedCategories } from "../services/categoryClient";
+import type { CategoryWithSongs, SongSummary } from "../services/categoryClient";
+
+const SongsView = () => {
+    const [songs, setSongs] = useState<SongSummary[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const category = searchParams.get("category");
+
+    useEffect(() => {
+        if (!category) {
+            setSongs([]);
+            setError(null);
+            setIsLoading(false);
+            return;
+        }
+
+        const auth = JSON.parse(localStorage.getItem("auth") ?? "{}");
+
+        if (!auth?.token) {
+            console.error("No authentication token found");
+            router.push("/");
+            return;
+        }
+
+        let cancelled = false;
+
+        const applySongs = (categoriesData: CategoryWithSongs[]) => {
+            if (cancelled) return;
+            const match = categoriesData.find((item) => item.name === category);
+            if (match && match.songs?.length) {
+                setSongs([...match.songs]);
+                setError(null);
+            } else {
+                setSongs([]);
+                setError(null);
+            }
+        };
+
+        const cached = getCachedCategories();
+        if (cached) {
+            applySongs(cached);
+            setIsLoading(false);
+        } else {
+            setIsLoading(true);
+        }
+
+        if (!cached) {
+            (async () => {
+                try {
+                    const data = await fetchCategories(auth.token);
+                    applySongs(data);
+                    if (!cancelled) {
+                        setIsLoading(false);
+                    }
+                } catch (err) {
+                    if (cancelled) return;
+                    console.error("Fetching songs failed:", err);
+                    if (!cached) {
+                        setError("Failed to load songs.");
+                    }
+                    setIsLoading(false);
+                }
+            })();
+        }
+
+        return () => {
+            cancelled = true;
+        };
+    }, [category, router]);
+
+    return (
+        <div className="page-shell songs-container">
+            <h1 className="page-heading">{category}</h1>
+            <SongList
+                songs={songs}
+                isLoading={isLoading}
+                error={error}
+                onSelectSong={(songId) => router.push(`/song/${songId}`)}
+            />
+            <Footer />
+        </div>
+    );
+};
+
+// useSearchParams needs a Suspense boundary while the page is prerendered. The
+// old client was a client rendered SPA, so there is nothing to prerender.
+const Songs = () => (
+    <Suspense fallback={null}>
+        <SongsView />
+    </Suspense>
+);
+
+export default Songs;
