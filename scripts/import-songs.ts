@@ -21,7 +21,6 @@ const dirname = path.dirname(fileURLToPath(import.meta.url))
 const DEFAULT_EXPORT_PATH = path.resolve(
   dirname,
   '..',
-  '..',
   '.migration',
   'songs-export.json',
 )
