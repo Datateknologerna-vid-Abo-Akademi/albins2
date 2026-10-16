@@ -262,20 +262,26 @@ wrangler d1 execute albins --remote --command "select count(*) from songs"
 
 ```sh
 pnpm typecheck                  # tsc --noEmit
-pnpm build                      # opennextjs-cloudflare build, writes .open-next/worker.js
-pnpm build:next                 # next build --webpack only, for a quicker local check
+pnpm build                      # next build --webpack
+pnpm build:worker               # opennextjs-cloudflare build, writes .open-next/worker.js
 pnpm preview                    # build and serve the Worker bundle locally
 pnpm generate:cloudflare-types  # regenerate cloudflare-env.d.ts from wrangler.jsonc
 ```
 
-`pnpm build` is the deployable build, and it is deliberately the whole thing:
-Workers Builds runs `pnpm run build` and the entry point in `wrangler.jsonc` is
-`.open-next/worker.js`, which only the OpenNext step produces. The OpenNext build
-runs the Next.js build itself, so `build:next` is not a prerequisite.
+`pnpm build` builds the Next.js app. `pnpm build:worker` is the OpenNext step that
+turns it into a Worker, and it runs the Next.js build itself, so it does not need
+`pnpm build` first. The entry point in `wrangler.jsonc` is `.open-next/worker.js`,
+which only `build:worker` produces, so that is the command a deploy pipeline has
+to run.
+
+Do not point a build pipeline at `pnpm build` and do not redefine `build` to run
+the OpenNext build: the OpenNext build invokes the package `build` script to
+build the Next.js app, so either mistake leaves no Worker bundle or recurses
+until the runner cancels it. That recursion is what a Workers Builds run did when
+`build` briefly meant `opennextjs-cloudflare build`.
 
 `.github/workflows/checks.yml` runs `pnpm install --frozen-lockfile`,
-`pnpm typecheck` and `pnpm build` on pull requests and on pushes to `main`, so CI
-exercises the same build that deploys.
+`pnpm typecheck` and `pnpm build` on pull requests and on pushes to `main`.
 
 The Next.js build runs with webpack rather than Turbopack. Payload asks the
 bundler to keep `drizzle-kit` external, because it is a dependency of the SQL
@@ -297,7 +303,7 @@ Build and deploy, then set the three secrets. `TURNSTILE_SITE_KEY` and
 the script:
 
 ```sh
-pnpm build
+pnpm build:worker
 wrangler deploy
 wrangler secret put PAYLOAD_SECRET
 wrangler secret put SESSION_SIGNING_SECRET
@@ -332,7 +338,7 @@ the repository, so they are recorded here, along with why they work.
 
 | Setting | Value |
 | --- | --- |
-| Build command | `pnpm run build` |
+| Build command | `pnpm run build:worker` |
 | Deploy command | `npx wrangler deploy` |
 | Root directory | `/` |
 | Production branch | `main` |
@@ -345,8 +351,7 @@ stops with `ERROR packages field missing or empty`. The `packageManager` field i
 `package.json` overrides that default, and the build log confirms it: the build
 image reports `Detected the following tools from environment: pnpm@11.23.0`.
 
-`pnpm run build` is the command Workers Builds uses, and `package.json` defines
-it as the OpenNext build, which is what writes `.open-next/worker.js`, the entry
-point in `wrangler.jsonc`. Do not narrow it back to the plain Next.js build
-without changing this setting at the same time, or the deploy will find no entry
-point.
+The build command has to be `build:worker`, not `build`. The entry point in
+`wrangler.jsonc` is `.open-next/worker.js`, which only the OpenNext step writes,
+and the OpenNext build runs the package `build` script itself, so pointing the
+pipeline at `build` both omits the Worker bundle and risks recursion.

@@ -12,7 +12,7 @@
 - `pnpm dev` starts the Next.js dev server on http://localhost:3000, backed by wrangler's local platform proxy and the local D1 file under `.wrangler/state`.
 - `pnpm migrate` applies the checked-in migrations to the local D1 database; `pnpm migrate:create --name add-something` generates a new one.
 - `pnpm import:songs` seeds the local database from the corpus export. It is idempotent, and `SONGS_EXPORT_PATH` overrides the default input path.
-- `pnpm typecheck` runs `tsc --noEmit`. `pnpm build` is the deployable build: it runs `opennextjs-cloudflare build`, which runs the Next.js build itself and then writes `.open-next/worker.js`, the entry point in `wrangler.jsonc`. `pnpm build:next` is the plain Next.js build for a quicker local check, and `pnpm preview` builds and serves the Worker bundle locally.
+- `pnpm typecheck` runs `tsc --noEmit` and `pnpm build` runs `next build --webpack`. `pnpm build:worker` runs the OpenNext build that writes `.open-next/worker.js`, the entry point in `wrangler.jsonc`, and it runs the Next.js build itself. Never redefine `build` to run the OpenNext build: the OpenNext build invokes the package `build` script, so that recurses. `pnpm preview` builds and serves the Worker bundle locally.
 - `pnpm generate:types` regenerates `src/payload-types.ts` and `pnpm generate:importmap` regenerates the admin import map. Never edit either by hand.
 - CI runs `pnpm install --frozen-lockfile`, `pnpm typecheck` and `pnpm build` on pull requests and on pushes to `main`.
 
