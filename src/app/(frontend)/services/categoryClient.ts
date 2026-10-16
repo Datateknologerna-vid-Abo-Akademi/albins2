@@ -74,7 +74,14 @@ export const getCachedCategories = (): CategoryWithSongs[] | null => {
   return cached ? sortCategories(cached) : null;
 };
 
-export const fetchCategories = async (token: string): Promise<CategoryWithSongs[]> => {
+/**
+ * The start screen prefetches the songbook while /categories mounts and asks for
+ * the same thing, and when neither finds a cache the two requests used to race:
+ * two identical 223 KB fetches on the first visit of a session. Share one.
+ */
+let inFlight: Promise<CategoryWithSongs[]> | null = null;
+
+const loadCategories = async (token: string): Promise<CategoryWithSongs[]> => {
   const response = await fetch('/api/songbook', {
     method: 'GET',
     headers: {
@@ -95,6 +102,16 @@ export const fetchCategories = async (token: string): Promise<CategoryWithSongs[
   const sorted = sortCategories(payload.categories);
   setCache(CACHE_KEYS.categories, sorted);
   return sorted;
+};
+
+export const fetchCategories = (token: string): Promise<CategoryWithSongs[]> => {
+  if (!inFlight) {
+    inFlight = loadCategories(token).finally(() => {
+      inFlight = null;
+    });
+  }
+
+  return inFlight;
 };
 
 export const clearCategoryCache = () => clearCache([CACHE_KEYS.categories]);

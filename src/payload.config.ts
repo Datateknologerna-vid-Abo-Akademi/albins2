@@ -61,6 +61,12 @@ export default buildConfig({
   },
   collections: [Users, Songbooks, Categories, Songs],
   editor: lexicalEditor(),
+  // Nothing consumes GraphQL and the admin panel uses Payload's REST routes.
+  // Leaving it on bundled a schema builder into the Worker for no benefit, and
+  // the boot cost is what the first request after an idle period pays.
+  graphQL: {
+    disable: true,
+  },
   secret: process.env.PAYLOAD_SECRET ?? '',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
