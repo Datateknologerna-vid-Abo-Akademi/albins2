@@ -1,4 +1,3 @@
-import { convertLexicalToHTML } from '@payloadcms/richtext-lexical/html'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 
@@ -22,41 +21,6 @@ function toNullableNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-type LexicalState = Parameters<typeof convertLexicalToHTML>[0]['data']
-
-/** An empty paragraph, however the HTML converter happens to spell the break. */
-const EMPTY_PARAGRAPH = /<p>(?:<br\s*\/?>)+<\/p>/g
-
-/**
- * Payload's HTML converter escapes single and double quotes as entities, and
- * renders an empty paragraph as `<p><br></p>`. The client searches the raw HTML
- * string rather than the rendered text, so quotes are kept literal, the way
- * CKEditor stored them, and a blank line is written back as `<p></p>`, which is
- * the form it had before. The extra `<br>` gives the blank line a marginally
- * different height and shifts the whole page by a pixel.
- */
-function toSongbookHtml(data: LexicalState): string {
-  return convertLexicalToHTML({ data, disableContainer: true })
-    .replaceAll('&#39;', "'")
-    .replaceAll('&quot;', '"')
-    .replace(EMPTY_PARAGRAPH, '<p></p>')
-}
-
-function contentToHtml(content: unknown): string | null {
-  if (typeof content !== 'string' || content.length === 0) {
-    return null
-  }
-
-  try {
-    return toSongbookHtml(JSON.parse(content) as LexicalState)
-  } catch (error) {
-    // A song whose stored Lexical state cannot be read still has to be
-    // servable, and an empty body is better than failing the whole songbook.
-    console.error(`[api/songbook] could not render song content: ${String(error)}`)
-    return null
-  }
-}
-
 type SongbookRow = { id: number; name: string }
 type CategoryRow = { id: number; name: string; order: unknown }
 type SongRow = {
@@ -64,7 +28,7 @@ type SongRow = {
   title: string
   melody: string | null
   author: string | null
-  content: string | null
+  content_html: string | null
   page_number: unknown
   negative_page_number: unknown
   order: unknown
@@ -100,7 +64,9 @@ export async function GET(request: Request) {
   // initialisation is the largest cost on a cold isolate, and this is the one
   // public read path, so it is worth going straight to the tables. The shape
   // below is the contract the client was built against, and the collection
-  // definitions in src/collections are what write these columns.
+  // definitions in src/collections are what write these columns. `content_html`
+  // is rendered when a song is written, so this route never loads the Lexical
+  // HTML converter.
   const songbooks = await db
     .prepare('select id, name from songbooks order by id asc limit 2')
     .all<SongbookRow>()
@@ -127,7 +93,7 @@ export async function GET(request: Request) {
       .all<CategoryRow>(),
     db
       .prepare(
-        'select id, title, melody, author, content, page_number, negative_page_number, "order", category_id from songs where category_id in (select id from categories where songbook_id = ?1) order by "order" asc, id asc',
+        'select id, title, melody, author, content_html, page_number, negative_page_number, "order", category_id from songs where category_id in (select id from categories where songbook_id = ?1) order by "order" asc, id asc',
       )
       .bind(songbook.id)
       .all<SongRow>(),
@@ -144,7 +110,7 @@ export async function GET(request: Request) {
       author: song.author ?? null,
       category: song.category_id,
       category_name: nameById.get(song.category_id) ?? '',
-      content: contentToHtml(song.content),
+      content: song.content_html ?? null,
       id: song.id,
       melody: song.melody ?? null,
       negative_page_number: toNullableNumber(song.negative_page_number),

@@ -198,6 +198,10 @@ export interface Song {
     [k: string]: unknown;
   } | null;
   /**
+   * Rendered HTML of the lyrics, served verbatim by /api/songbook. Derived on save.
+   */
+  contentHtml?: string | null;
+  /**
    * Printed page in the songbook.
    */
   pageNumber?: number | null;
@@ -348,6 +352,7 @@ export interface SongsSelect<T extends boolean = true> {
   melody?: T;
   author?: T;
   content?: T;
+  contentHtml?: T;
   pageNumber?: T;
   negativePageNumber?: T;
   order?: T;
