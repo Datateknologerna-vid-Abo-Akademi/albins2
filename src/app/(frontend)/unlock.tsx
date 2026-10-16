@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import Albin from './components/Albin'
-import { fetchCategories, getCachedCategories } from './services/categoryClient'
+import { cacheSongbook, getCachedCategories } from './services/categoryClient'
 
 const TURNSTILE_SCRIPT_ID = 'cf-turnstile-script'
 const TURNSTILE_SCRIPT_SRC =
   'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
 
-// Must match EXPECTED_TURNSTILE_ACTION in src/app/api/session/route.ts.
+// Must match EXPECTED_TURNSTILE_ACTION in src/lib/turnstile.ts.
 const ACTION = 'session'
 
 // The old start screen aborted the anonymous login request after five seconds.
@@ -91,7 +91,8 @@ function getStoredAuth(): { token: string; expiry: string | null } | null {
 
 /**
  * The start screen gate. The visitor presses the button, Turnstile solves a
- * challenge, and the resulting token is exchanged for a session token.
+ * challenge, and the resulting token is exchanged for a session token and the
+ * songbook in the same response.
  *
  * The markup keeps the classes of the old start screen, and the request
  * handling keeps its failure behaviour: a five second abort, and a fallback to
@@ -145,7 +146,7 @@ export default function Unlock({ siteKey }: { siteKey: string }) {
         : null
 
       try {
-        const response = await fetch('/api/session', {
+        const response = await fetch('/api/unlock', {
           body: JSON.stringify({ 'cf-turnstile-response': token }),
           headers: { 'Content-Type': 'application/json' },
           method: 'POST',
@@ -156,7 +157,11 @@ export default function Unlock({ siteKey }: { siteKey: string }) {
           throw new Error('Login failed')
         }
 
-        const data = (await response.json()) as { token?: string; expiry?: string }
+        const data = (await response.json()) as {
+          token?: string
+          expiry?: string
+          songbook?: unknown
+        }
         const expiry = data.expiry
           ? new Date(data.expiry).toISOString()
           : new Date(Date.now() + 3600 * 1000).toISOString()
@@ -166,20 +171,16 @@ export default function Unlock({ siteKey }: { siteKey: string }) {
           window.localStorage.setItem('auth', JSON.stringify(auth))
         }
 
+        // One request, not two: /api/unlock answers with the songbook as well,
+        // so seed the cache before navigating and /categories renders the
+        // categories straight away instead of fetching them again. A payload
+        // that does not validate caches nothing, and the page falls back to its
+        // own fetch.
+        cacheSongbook(data.songbook)
+
         if (!hasNavigatedRef.current) {
           hasNavigatedRef.current = true
           router.push('/categories')
-        }
-
-        // The categories are refetched below, which replaces whatever is
-        // cached. Deliberately not clearing first: the cache is not per-user
-        // and holds nothing private, so dropping it only guaranteed a loading
-        // skeleton before the refetch landed. /categories now renders the
-        // cached copy immediately and the fetch updates it in place.
-        try {
-          await fetchCategories(data.token)
-        } catch (prefetchError) {
-          console.warn('Prefetching categories failed:', prefetchError)
         }
 
         if (isMountedRef.current) {
@@ -206,7 +207,7 @@ export default function Unlock({ siteKey }: { siteKey: string }) {
     // The visitor spends a moment on this screen before pressing the button.
     // Fetching the categories route chunk now means its download overlaps that
     // pause and the Turnstile round trip, instead of starting only once
-    // /api/session has answered.
+    // /api/unlock has answered.
     router.prefetch('/categories')
 
     loadTurnstile()

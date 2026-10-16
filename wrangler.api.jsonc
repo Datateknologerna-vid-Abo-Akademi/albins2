@@ -1,0 +1,48 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // The public read path, split out of the main Worker so first-request CPU is
+  // not spent evaluating Next, Payload's admin and the rest of that bundle.
+  // `src/api-worker/index.ts` imports nothing from Next, Payload or Lexical.
+  "name": "albins-api",
+  // Wrangler compiles the TypeScript itself, with no framework build step.
+  "main": "src/api-worker/index.ts",
+  "compatibility_date": "2025-08-15",
+  // Reachable from the two routes below and nowhere else. A workers.dev
+  // subdomain would be a third public entry point for the read API, with none
+  // of the zone's protection.
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true
+  },
+  // Exactly the two paths this Worker owns. `albins.app/*` stays on the main
+  // Worker, which keeps serving the app, the admin panel and the assets.
+  "routes": [
+    {
+      "pattern": "albins.app/api/unlock*",
+      "zone_name": "albins.app"
+    },
+    {
+      "pattern": "albins.app/api/songbook*",
+      "zone_name": "albins.app"
+    }
+  ],
+  // TURNSTILE_SECRET and SESSION_SIGNING_SECRET are secrets and are set with
+  // `wrangler secret put -c wrangler.api.jsonc`. Both must hold the same values
+  // the `albins` Worker has: the session token is signed by whichever Worker
+  // answers `POST /api/unlock` and verified by whichever answers
+  // `GET /api/songbook`, so a different signing key rejects every session token
+  // already in a visitor's browser.
+  "vars": {
+    "TURNSTILE_HOSTNAMES": "albins.app"
+  },
+  // The same `albins` D1 database in the Datateknologerna account as the main
+  // Worker, so both read the same rows.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "albins",
+      "database_id": "db96f423-6b52-4848-83ce-7183b22bb79b"
+    }
+  ]
+}

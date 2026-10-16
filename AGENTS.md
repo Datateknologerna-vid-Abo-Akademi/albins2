@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 - This repository is the whole Albins service: a Payload CMS 3 and Next.js 16 app deployed to Cloudflare Workers with a D1 database. There is no separate API or client project.
-- `src/app/(frontend)/` holds the public client: the start screen, the `categories`, `songs`, `search` and `song/[id]` routes, the `not-found.tsx` redirect, the ported modules under `components/`, `services/` and `utils/`, and the stylesheets under `styles/`. `src/app/(payload)/` holds the Payload admin panel and its REST and GraphQL routes. `src/app/api/session/` and `src/app/api/songbook/` hold the two custom routes.
+- `src/app/(frontend)/` holds the public client: the start screen, the `categories`, `songs`, `search` and `song/[id]` routes, the `not-found.tsx` redirect, the ported modules under `components/`, `services/` and `utils/`, and the stylesheets under `styles/`. `src/app/(payload)/` holds the Payload admin panel and its REST routes; GraphQL is disabled, so there are no GraphQL routes. `src/app/api/session/` and `src/app/api/songbook/` hold the two custom routes.
 - `src/collections/` defines the Payload collections, `src/access/` the shared access functions, `src/lib/` the signing and HTML conversion helpers, and `src/migrations/` the checked-in D1 migrations.
 - `scripts/` holds local and CI tooling; `scripts/import-songs.ts` seeds D1 from `.migration/songs-export.json` (gitignored, read-only production export). `public/` holds static assets such as the Albin logo, the offline page and the service worker.
 - `wrangler.jsonc` is the Worker configuration, `open-next.config.ts` the OpenNext build config, and `.github/workflows/checks.yml` the only CI workflow.
@@ -12,7 +12,7 @@
 - `pnpm dev` starts the Next.js dev server on http://localhost:3000, backed by wrangler's local platform proxy and the local D1 file under `.wrangler/state`.
 - `pnpm migrate` applies the checked-in migrations to the local D1 database; `pnpm migrate:create --name add-something` generates a new one.
 - `pnpm import:songs` seeds the local database from the corpus export. It is idempotent, and `SONGS_EXPORT_PATH` overrides the default input path.
-- `pnpm typecheck` runs `tsc --noEmit`, `pnpm build` runs `next build --webpack`, and `pnpm build:worker` runs the OpenNext build that writes `.open-next/worker.js`. `pnpm preview` builds and serves the Worker bundle locally.
+- `pnpm typecheck` runs `tsc --noEmit` and `pnpm build` runs `next build --webpack`. `pnpm build:worker` runs the OpenNext build that writes `.open-next/worker.js`, the entry point in `wrangler.jsonc`, and it runs the Next.js build itself. Never redefine `build` to run the OpenNext build: the OpenNext build invokes the package `build` script, so that recurses. `pnpm preview` builds and serves the Worker bundle locally.
 - `pnpm generate:types` regenerates `src/payload-types.ts` and `pnpm generate:importmap` regenerates the admin import map. Never edit either by hand.
 - CI runs `pnpm install --frozen-lockfile`, `pnpm typecheck` and `pnpm build` on pull requests and on pushes to `main`.
 

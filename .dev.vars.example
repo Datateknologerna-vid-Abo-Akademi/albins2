@@ -6,11 +6,12 @@
 PAYLOAD_SECRET="replace-with-a-random-string"
 SESSION_SIGNING_SECRET="replace-with-a-random-string"
 
-# Verifies the Turnstile response in POST /api/session. Required: the route
-# fails closed with a 500 when it is missing and never issues a token.
+# Verifies the Turnstile response in POST /api/session and POST /api/unlock.
+# Required: the routes fail closed with a 500 when it is missing and never issue
+# a token.
 #
-# To get a token locally you need the widget's real secret from the Cloudflare
-# dashboard, and `localhost` and `127.0.0.1` registered as hostnames on the
+# To get a token locally you need the widget's real secret, the one the deployed
+# Worker holds, and `localhost` and `127.0.0.1` registered as hostnames on the
 # widget. Cloudflare's test keys cannot pass the gate: they return no `action`,
 # so the action check rejects them by design. See the README.
 TURNSTILE_SECRET=""
@@ -21,7 +22,7 @@ TURNSTILE_SECRET=""
 # To exercise only the rejection paths, set this to the always-pass test key
 # `1x00000000000000000000AA`, set TURNSTILE_SECRET to
 # `1x0000000000000000000000000000000AA` and TURNSTILE_HOSTNAMES to
-# `example.com`. POST /api/session then always returns 403.
+# `example.com`. POST /api/session and POST /api/unlock then always return 403.
 TURNSTILE_SITE_KEY="0x4AAAAAAFXzEiqLnNlrl6Y1"
 
 # Hostnames that siteverify must report. Required: an empty list rejects every

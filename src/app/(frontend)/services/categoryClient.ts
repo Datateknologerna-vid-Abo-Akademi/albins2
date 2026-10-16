@@ -74,7 +74,14 @@ export const getCachedCategories = (): CategoryWithSongs[] | null => {
   return cached ? sortCategories(cached) : null;
 };
 
-export const fetchCategories = async (token: string): Promise<CategoryWithSongs[]> => {
+/**
+ * The start screen prefetches the songbook while /categories mounts and asks for
+ * the same thing, and when neither finds a cache the two requests used to race:
+ * two identical 223 KB fetches on the first visit of a session. Share one.
+ */
+let inFlight: Promise<CategoryWithSongs[]> | null = null;
+
+const loadCategories = async (token: string): Promise<CategoryWithSongs[]> => {
   const response = await fetch('/api/songbook', {
     method: 'GET',
     headers: {
@@ -88,13 +95,22 @@ export const fetchCategories = async (token: string): Promise<CategoryWithSongs[
   }
 
   const payload = (await response.json()) as unknown;
-  if (!isSongBook(payload)) {
+  const sorted = cacheSongbook(payload);
+  if (!sorted) {
     throw new Error('Invalid songbook response');
   }
 
-  const sorted = sortCategories(payload.categories);
-  setCache(CACHE_KEYS.categories, sorted);
   return sorted;
+};
+
+export const fetchCategories = (token: string): Promise<CategoryWithSongs[]> => {
+  if (!inFlight) {
+    inFlight = loadCategories(token).finally(() => {
+      inFlight = null;
+    });
+  }
+
+  return inFlight;
 };
 
 export const clearCategoryCache = () => clearCache([CACHE_KEYS.categories]);
@@ -165,4 +181,21 @@ const isSongBook = (payload: unknown): payload is SongBook => {
     Array.isArray(candidate.categories) &&
     candidate.categories.every(isCategoryWithSongs)
   );
+};
+
+/**
+ * Validates, sorts and caches a songbook payload. `POST /api/unlock` answers
+ * with the session token and the songbook in one response, so the start screen
+ * seeds the cache here and /categories renders from it without a second
+ * request. Returns the cached categories, or null when the payload is not a
+ * songbook and nothing was cached.
+ */
+export const cacheSongbook = (payload: unknown): CategoryWithSongs[] | null => {
+  if (!isSongBook(payload)) {
+    return null;
+  }
+
+  const sorted = sortCategories(payload.categories);
+  setCache(CACHE_KEYS.categories, sorted);
+  return sorted;
 };
