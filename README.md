@@ -84,14 +84,42 @@ Worker.
 
 | Route | Description |
 | --- | --- |
-| `GET /` | Public start screen: the Albin logo, the button that solves the Turnstile challenge and `POST /api/session` with the resulting `cf-turnstile-response` token, then stores the session token it receives under `auth` in `localStorage`. |
+| `GET /` | Public start screen: the Albin logo, the button that solves the Turnstile challenge and posts the resulting `cf-turnstile-response` token to `POST /api/unlock`, then stores the session token it receives under `auth` in `localStorage` and seeds the category cache from the songbook in the same response. |
 | `POST /api/session` | Requires a valid Turnstile response token, then returns `{ "token": "...", "expiry": "<ISO 8601>" }`. The token is an HMAC-SHA256 signed, stateless session token valid for 12 hours. |
+| `POST /api/unlock` | Same challenge, and answers with `{ "token": "...", "expiry": "<ISO 8601>", "songbook": { ... } }` in one response, so the start screen needs one request instead of two. Every challenge failure is the same `403 {"detail": "Forbidden."}` `POST /api/session` returns, and never a token. |
 | `GET /api/songbook` | Requires `Authorization: Bearer <token>`. Returns the songbook with its categories and songs, using the field names `category_name`, `audio`, `page_number` and `negative_page_number`. Responds `401` with `{"detail": "..."}` for a missing, invalid or expired token. |
 | `GET /admin` | Payload admin panel. The first user created there becomes an admin. |
 | `/api/*` | Payload's own REST and GraphQL API. |
 
-`/api/session` and `/api/songbook` send `Cache-Control: no-store` and are
-dynamic.
+`/api/session`, `/api/unlock` and `/api/songbook` send `Cache-Control: no-store`
+and are dynamic.
+
+## The api Worker
+
+The public read path is served by a second, small Worker rather than by the
+Next.js one. The Next.js isolate evaluates Next, Payload's admin and the rest of
+a bundle of several megabytes before it can answer the first request of a
+session, which measured 275 to 605 ms of CPU against 13 to 50 ms warm. The
+songbook read does not need any of that: `content_html` is rendered when a song
+is written, so the read path needs neither Payload nor the Lexical converter.
+
+| | |
+| --- | --- |
+| Entry point | `src/api-worker/index.ts`, compiled by wrangler itself |
+| Config | `wrangler.api.jsonc`, Worker name `albins-api` |
+| Routes | `albins.app/api/unlock*` and `albins.app/api/songbook*` only, so `albins.app/*` stays with the Next.js Worker |
+| Bindings | the same `DB` D1 database, `TURNSTILE_HOSTNAMES` as a var, and the two secrets |
+| Imports | nothing from Next, Payload, Lexical or React |
+
+It shares `src/lib/session.ts`, `src/lib/songbook.ts` and `src/lib/turnstile.ts`
+with the Next.js routes, so the response shape and the challenge checks have one
+implementation. Both endpoints also exist in the Next app, as
+`src/app/api/unlock/route.ts` and `src/app/api/songbook/route.ts`, so `pnpm dev`
+has them without wrangler.
+
+Every response carries `x-albins-api: 1`, which says from the outside which
+Worker answered a request. The Worker is reachable only through its two routes:
+`workers_dev` and preview URLs are off, so there is no third public entry point.
 
 ## Frontend
 
@@ -152,6 +180,8 @@ bypass, its asset cache and its 20 entry runtime cache limit are unchanged.
 `POST /api/session` is gated on a Cloudflare Turnstile challenge, so a script
 that calls the API directly cannot obtain a session token. The start screen
 solves the challenge and posts the resulting `cf-turnstile-response` token.
+`POST /api/unlock` runs the same challenge through the same shared code in
+`src/lib/turnstile.ts`, and answers with the token and the songbook together.
 
 The server requires all three of:
 
@@ -190,10 +220,10 @@ scrape surface. An unauthenticated `GET /api/songs` returns an empty document
 list rather than content.
 
 Public content is served exclusively by `GET /api/songbook`, which checks the
-signed session token and then reads through the Payload Local API. That route
-is the only public read path, and it reads with Payload's default
-`overrideAccess`, because the gate is the session token rather than a Payload
-user.
+signed session token and then reads the `songbooks`, `categories` and `songs`
+tables from D1 directly instead of going through the Payload Local API, because
+Payload's initialisation is the largest cost on a cold isolate. The session
+token is the gate, so no Payload user is involved.
 
 Writes to content require the `admin` or `editor` role. Creating and deleting
 users requires `admin`, and only an `admin` may change the `roles` field.
@@ -310,6 +340,22 @@ wrangler secret put SESSION_SIGNING_SECRET
 wrangler secret put TURNSTILE_SECRET
 ```
 
+The api Worker is deployed separately, from its own config:
+
+```sh
+wrangler secret put TURNSTILE_SECRET -c wrangler.api.jsonc
+wrangler secret put SESSION_SIGNING_SECRET -c wrangler.api.jsonc
+wrangler deploy -c wrangler.api.jsonc
+```
+
+Both secrets must be the values the `albins` Worker already has.
+`SESSION_SIGNING_SECRET` in particular: `POST /api/unlock` on one Worker issues
+a token that `GET /api/songbook` verifies, and while a client that predates this
+change still exchanges its challenge through `POST /api/session` on the `albins`
+Worker, a different key there rejects every session token a visitor already
+holds. Setting the two Workers to the same key is what makes attaching the
+routes safe before the new client bundle is deployed.
+
 Seed the remote database by exporting the local one and executing that dump
 remotely, because `pnpm migrate` and `pnpm import:songs` only write locally:
 
@@ -335,6 +381,11 @@ keep its DNS record proxied so the rule runs.
 The Worker is connected to this repository through Cloudflare Workers Builds, so
 a push builds and deploys it. Those settings live in the dashboard rather than in
 the repository, so they are recorded here, along with why they work.
+
+Workers Builds deploys `albins` only. The api Worker has no build step, so a push
+never deploys it: it is deployed by hand with
+`wrangler deploy -c wrangler.api.jsonc`, and its two routes are attached by that
+same command.
 
 | Setting | Value |
 | --- | --- |

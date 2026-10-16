@@ -95,12 +95,11 @@ const loadCategories = async (token: string): Promise<CategoryWithSongs[]> => {
   }
 
   const payload = (await response.json()) as unknown;
-  if (!isSongBook(payload)) {
+  const sorted = cacheSongbook(payload);
+  if (!sorted) {
     throw new Error('Invalid songbook response');
   }
 
-  const sorted = sortCategories(payload.categories);
-  setCache(CACHE_KEYS.categories, sorted);
   return sorted;
 };
 
@@ -182,4 +181,21 @@ const isSongBook = (payload: unknown): payload is SongBook => {
     Array.isArray(candidate.categories) &&
     candidate.categories.every(isCategoryWithSongs)
   );
+};
+
+/**
+ * Validates, sorts and caches a songbook payload. `POST /api/unlock` answers
+ * with the session token and the songbook in one response, so the start screen
+ * seeds the cache here and /categories renders from it without a second
+ * request. Returns the cached categories, or null when the payload is not a
+ * songbook and nothing was cached.
+ */
+export const cacheSongbook = (payload: unknown): CategoryWithSongs[] | null => {
+  if (!isSongBook(payload)) {
+    return null;
+  }
+
+  const sorted = sortCategories(payload.categories);
+  setCache(CACHE_KEYS.categories, sorted);
+  return sorted;
 };

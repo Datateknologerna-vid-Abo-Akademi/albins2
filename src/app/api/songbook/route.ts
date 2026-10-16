@@ -1,6 +1,7 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 
+import { readSongbook } from '@/lib/songbook'
 import { readSessionToken, verifySessionToken } from '@/lib/session'
 
 // Never statically generated and never cached.
@@ -11,29 +12,6 @@ const NO_STORE = { 'Cache-Control': 'no-store' } as const
 
 const unauthorized = (detail: string) =>
   NextResponse.json({ detail }, { headers: NO_STORE, status: 401 })
-
-/** D1 hands back SQLite numerics, which can arrive as strings or null. */
-function toNullableNumber(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') {
-    return null
-  }
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-type SongbookRow = { id: number; name: string }
-type CategoryRow = { id: number; name: string; order: unknown }
-type SongRow = {
-  id: number
-  title: string
-  melody: string | null
-  author: string | null
-  content_html: string | null
-  page_number: unknown
-  negative_page_number: unknown
-  order: unknown
-  category_id: number
-}
 
 export async function GET(request: Request) {
   const sessionSecret = process.env.SESSION_SIGNING_SECRET
@@ -58,80 +36,14 @@ export async function GET(request: Request) {
   }
 
   const { env } = await getCloudflareContext({ async: true })
-  const db = env.DB
+  const result = await readSongbook(env.DB)
 
-  // Read D1 directly rather than through the Payload Local API. Payload's
-  // initialisation is the largest cost on a cold isolate, and this is the one
-  // public read path, so it is worth going straight to the tables. The shape
-  // below is the contract the client was built against, and the collection
-  // definitions in src/collections are what write these columns. `content_html`
-  // is rendered when a song is written, so this route never loads the Lexical
-  // HTML converter.
-  const songbooks = await db
-    .prepare('select id, name from songbooks order by id asc limit 2')
-    .all<SongbookRow>()
-
-  const bookRows = songbooks.results ?? []
-  if (bookRows.length === 0) {
-    return NextResponse.json({ detail: 'Songbook not found.' }, { headers: NO_STORE, status: 404 })
-  }
-  if (bookRows.length > 1) {
+  if (result.kind === 'error') {
     return NextResponse.json(
-      { detail: 'Multiple songbooks found. Please ensure only one songbook exists.' },
-      { headers: NO_STORE, status: 409 },
+      { detail: result.detail },
+      { headers: NO_STORE, status: result.status },
     )
   }
 
-  const songbook = bookRows[0]
-
-  const [categories, songs] = await Promise.all([
-    db
-      .prepare(
-        'select id, name, "order" from categories where songbook_id = ?1 order by "order" asc, id asc',
-      )
-      .bind(songbook.id)
-      .all<CategoryRow>(),
-    db
-      .prepare(
-        'select id, title, melody, author, content_html, page_number, negative_page_number, "order", category_id from songs where category_id in (select id from categories where songbook_id = ?1) order by "order" asc, id asc',
-      )
-      .bind(songbook.id)
-      .all<SongRow>(),
-  ])
-
-  const categoryRows = categories.results ?? []
-  const nameById = new Map(categoryRows.map((category) => [category.id, category.name]))
-  const songsByCategory = new Map<number, unknown[]>()
-
-  for (const song of songs.results ?? []) {
-    const bucket = songsByCategory.get(song.category_id) ?? []
-    bucket.push({
-      audio: null,
-      author: song.author ?? null,
-      category: song.category_id,
-      category_name: nameById.get(song.category_id) ?? '',
-      content: song.content_html ?? null,
-      id: song.id,
-      melody: song.melody ?? null,
-      negative_page_number: toNullableNumber(song.negative_page_number),
-      order: toNullableNumber(song.order),
-      page_number: toNullableNumber(song.page_number),
-      title: song.title,
-    })
-    songsByCategory.set(song.category_id, bucket)
-  }
-
-  return NextResponse.json(
-    {
-      id: songbook.id,
-      name: songbook.name,
-      categories: categoryRows.map((category) => ({
-        id: category.id,
-        name: category.name,
-        order: toNullableNumber(category.order),
-        songs: songsByCategory.get(category.id) ?? [],
-      })),
-    },
-    { headers: NO_STORE },
-  )
+  return NextResponse.json(result.songbook, { headers: NO_STORE })
 }
