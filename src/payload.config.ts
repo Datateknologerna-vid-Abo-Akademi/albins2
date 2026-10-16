@@ -88,6 +88,16 @@ function getCloudflareContextFromWrangler(): Promise<CloudflareContext> {
         // Deploys apply migrations against the remote database, every other
         // invocation stays local.
         remoteBindings: isProduction && !isBuild,
+        // A build only needs the bindings to exist so the config can load, and
+        // `next build` collects page data for several routes at once. Every
+        // collector starts its own proxy, so a persisted database means several
+        // workerd instances creating and opening one SQLite file at the same
+        // time, which fails with `database is locked: SQLITE_BUSY` when there is
+        // no state yet, and a fresh build runner is exactly that case. Nothing
+        // in a build reads the rows, and the prerendered pages are client
+        // rendered shells, so keep this storage in memory. Development and the
+        // Payload CLI keep the persisted database they need.
+        persist: isBuild ? false : undefined,
       } satisfies GetPlatformProxyOptions),
   )
 }
