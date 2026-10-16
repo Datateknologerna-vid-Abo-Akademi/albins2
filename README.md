@@ -262,16 +262,22 @@ wrangler d1 execute albins --remote --command "select count(*) from songs"
 
 ```sh
 pnpm typecheck                  # tsc --noEmit
-pnpm build                      # next build --webpack
-pnpm build:worker               # opennextjs-cloudflare build, writes .open-next/worker.js
+pnpm build                      # opennextjs-cloudflare build, writes .open-next/worker.js
+pnpm build:next                 # next build --webpack only, for a quicker local check
 pnpm preview                    # build and serve the Worker bundle locally
 pnpm generate:cloudflare-types  # regenerate cloudflare-env.d.ts from wrangler.jsonc
 ```
 
-`.github/workflows/checks.yml` runs `pnpm install --frozen-lockfile`,
-`pnpm typecheck` and `pnpm build` on pull requests and on pushes to `main`.
+`pnpm build` is the deployable build, and it is deliberately the whole thing:
+Workers Builds runs `pnpm run build` and the entry point in `wrangler.jsonc` is
+`.open-next/worker.js`, which only the OpenNext step produces. The OpenNext build
+runs the Next.js build itself, so `build:next` is not a prerequisite.
 
-`pnpm build` runs Next.js with webpack rather than Turbopack. Payload asks the
+`.github/workflows/checks.yml` runs `pnpm install --frozen-lockfile`,
+`pnpm typecheck` and `pnpm build` on pull requests and on pushes to `main`, so CI
+exercises the same build that deploys.
+
+The Next.js build runs with webpack rather than Turbopack. Payload asks the
 bundler to keep `drizzle-kit` external, because it is a dependency of the SQL
 adapters rather than a direct dependency of this app, and Turbopack emits that
 external under a mangled module name that the OpenNext bundler then cannot
@@ -291,7 +297,7 @@ Build and deploy, then set the three secrets. `TURNSTILE_SITE_KEY` and
 the script:
 
 ```sh
-pnpm build:worker
+pnpm build
 wrangler deploy
 wrangler secret put PAYLOAD_SECRET
 wrangler secret put SESSION_SIGNING_SECRET
@@ -322,21 +328,25 @@ keep its DNS record proxied so the rule runs.
 
 The Worker is connected to this repository through Cloudflare Workers Builds, so
 a push builds and deploys it. Those settings live in the dashboard rather than in
-the repository, so they are recorded here.
+the repository, so they are recorded here, along with why they work.
 
 | Setting | Value |
 | --- | --- |
-| Build variable | `PNPM_VERSION` = `11.23.0` |
-| Build command | `pnpm run build:worker` |
-| Deploy command | `npx opennextjs-cloudflare deploy` |
-| Preview command | `npx wrangler versions upload` |
+| Build command | `pnpm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Root directory | `/` |
+| Production branch | `main` |
+| Build variables | none |
 
-`PNPM_VERSION` is required, and its absence is why a build fails. The build image
-ships pnpm 10.11.1 and reads no pnpm version file, so the version has to come
-from that variable. pnpm 10 cannot read this repository's `pnpm-workspace.yaml`,
-which carries `allowBuilds` and `patchedDependencies` but no `packages` field,
-and it stops with `ERROR packages field missing or empty`.
+No `PNPM_VERSION` build variable is needed. The build image ships pnpm 10.11.1 by
+default, and pnpm 10 cannot read this repository's `pnpm-workspace.yaml`, which
+carries `allowBuilds` and `patchedDependencies` but no `packages` field, so it
+stops with `ERROR packages field missing or empty`. The `packageManager` field in
+`package.json` overrides that default, and the build log confirms it: the build
+image reports `Detected the following tools from environment: pnpm@11.23.0`.
 
-The build command has to be `build:worker` rather than `build`, because the entry
-point in `wrangler.jsonc` is `.open-next/worker.js`, which only the OpenNext
-build produces.
+`pnpm run build` is the command Workers Builds uses, and `package.json` defines
+it as the OpenNext build, which is what writes `.open-next/worker.js`, the entry
+point in `wrangler.jsonc`. Do not narrow it back to the plain Next.js build
+without changing this setting at the same time, or the deploy will find no entry
+point.

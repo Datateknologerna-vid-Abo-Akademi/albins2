@@ -6,8 +6,8 @@
   "description": "Albins songbook on Payload CMS 3 and Next.js, deployed to Cloudflare Workers with D1",
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
-    "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build --webpack",
-    "build:worker": "opennextjs-cloudflare build",
+    "build": "opennextjs-cloudflare build",
+    "build:next": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build --webpack",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "typecheck": "tsc --noEmit",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
