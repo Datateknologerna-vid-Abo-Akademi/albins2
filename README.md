@@ -317,3 +317,26 @@ delete the route, redeploy, and traffic returns to it.
 `308`, preserving the path and query. Leave `www` unbound as a Worker custom
 domain, or its requests arrive with a hostname the Turnstile gate rejects, and
 keep its DNS record proxied so the rule runs.
+
+## Continuous deployment
+
+The Worker is connected to this repository through Cloudflare Workers Builds, so
+a push builds and deploys it. Those settings live in the dashboard rather than in
+the repository, so they are recorded here.
+
+| Setting | Value |
+| --- | --- |
+| Build variable | `PNPM_VERSION` = `11.23.0` |
+| Build command | `pnpm run build:worker` |
+| Deploy command | `npx opennextjs-cloudflare deploy` |
+| Preview command | `npx wrangler versions upload` |
+
+`PNPM_VERSION` is required, and its absence is why a build fails. The build image
+ships pnpm 10.11.1 and reads no pnpm version file, so the version has to come
+from that variable. pnpm 10 cannot read this repository's `pnpm-workspace.yaml`,
+which carries `allowBuilds` and `patchedDependencies` but no `packages` field,
+and it stops with `ERROR packages field missing or empty`.
+
+The build command has to be `build:worker` rather than `build`, because the entry
+point in `wrangler.jsonc` is `.open-next/worker.js`, which only the OpenNext
+build produces.
