@@ -406,3 +406,10 @@ The build command has to be `build:worker`, not `build`. The entry point in
 `wrangler.jsonc` is `.open-next/worker.js`, which only the OpenNext step writes,
 and the OpenNext build runs the package `build` script itself, so pointing the
 pipeline at `build` both omits the Worker bundle and risks recursion.
+
+These settings are scoped, and the dashboard shows a `Production` and a
+`Previews Base` tab for each of them. A pull request is built with the preview
+scope, so both tabs need the same values. Setting only `Production` leaves every
+pull request building with the plain Next.js build, which then has no Worker
+bundle for the deploy step to find, and the failure looks identical to a build
+command that was never changed at all.
